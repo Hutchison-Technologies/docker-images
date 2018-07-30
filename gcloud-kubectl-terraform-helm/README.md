@@ -1,6 +1,6 @@
 # Gcloud + Kubectl + Terraform + Helm
 
-This image is based on the [gcloud-sdk:slim](https://hub.docker.com/r/google/cloud-sdk/) image. On top of this, it has `kubectl`, `terraform`, and `helm` CLI tools installed.
+This image is based on the [gcloud-sdk:slim](https://hub.docker.com/r/google/cloud-sdk/) image. On top of this, it has `kubectl`, `terraform`, `helm`, and `helmfile` CLI tools installed.
 
 If you plan to use this image for automation, you may find these posts helpful:
 
