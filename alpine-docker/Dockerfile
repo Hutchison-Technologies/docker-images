@@ -12,6 +12,8 @@ RUN apk --update --no-cache add \
     zlib-dev \
     docker \
     curl \
-    python3 && \
+    python3 \
+    tar \
+    gzip && \
     pip3 install --upgrade pip && \
     pip3 install docker-compose
