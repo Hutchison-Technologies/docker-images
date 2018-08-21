@@ -11,7 +11,7 @@ WORKDIR /
 
 COPY deploy.sh .
 
-RUN apk --update add ca-certificates wget python curl tar git bash && \
+RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip && \
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
     rm google-cloud-sdk.zip && \
