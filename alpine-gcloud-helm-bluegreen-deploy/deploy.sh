@@ -10,6 +10,7 @@ CHART_DIR=$1
 APP_NAME=$2
 TARGET_ENV=$3
 TARGET_VER=$4
+VALUES=$CHART_DIR/$TARGET_ENV.yaml
 
 OFFLINE_COLOUR=$(kubectl get service/$TARGET_ENV-$APP_NAME-offline -o=jsonpath="{.spec.selector.colour}")
 if [[ -z "${OFFLINE_COLOUR}" ]]; then
@@ -17,9 +18,9 @@ if [[ -z "${OFFLINE_COLOUR}" ]]; then
 fi
 
 echo "Deploying $TARGET_VER from $CHART_DIR to: $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME"
-if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR --install --force --recreate-pods --wait --timeout=120 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER; then
+if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=120 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER; then
     echo "Successfully upgraded, switching colour to $OFFLINE_COLOUR"
-    helm upgrade $TARGET_ENV-service-$APP_NAME $CHART_DIR --install --force --wait --timeout=120 --set bluegreen.is_service_release=true,bluegreen.service.selector.colour=$OFFLINE_COLOUR
+    helm upgrade $TARGET_ENV-service-$APP_NAME $CHART_DIR -f $VALUES --install --force --wait --timeout=120 --set bluegreen.is_service_release=true,bluegreen.service.selector.colour=$OFFLINE_COLOUR
 else
     LAST_GOOD_REV=$(helm history ${TARGET_ENV}-${OFFLINE_COLOUR}-${APP_NAME} -o json | jq -r -M --arg DEPLOYED "DEPLOYED" '[.[] | select(.status==$DEPLOYED)] | reverse | .[0] | .revision')
     
