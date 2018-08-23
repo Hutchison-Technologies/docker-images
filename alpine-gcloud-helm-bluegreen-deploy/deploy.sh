@@ -2,7 +2,7 @@
 
 if [ "$#" -ne 4 ]
 then
-  echo "Usage: deploy.sh CHART_DIR APP_NAME TARGET_ENV TARGET_VER ADDITIONAL_HELM_UPGRADE_SET_ARGS"
+  echo "Usage: deploy.sh CHART_DIR APP_NAME TARGET_ENV TARGET_VER"
   exit 1
 fi
 
@@ -10,8 +10,6 @@ CHART_DIR=$1
 APP_NAME=$2
 TARGET_ENV=$3
 TARGET_VER=$4
-shift 4
-ADDITIONAL_HELM_UPGRADE_SET_ARGS="$@"
 VALUES=$CHART_DIR/$TARGET_ENV.yaml
 
 OFFLINE_COLOUR=$(kubectl get service/$TARGET_ENV-$APP_NAME-offline -o=jsonpath="{.spec.selector.colour}")
@@ -23,7 +21,7 @@ echo "Deploying $TARGET_VER from $CHART_DIR to: $TARGET_ENV-$OFFLINE_COLOUR-$APP
 if [[ -z "${ADDITIONAL_HELM_UPGRADE_SET_ARGS}" ]]; then
     echo "With additional set args $ADDITIONAL_HELM_UPGRADE_SET_ARGS"
 fi
-if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=120 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER $ADDITIONAL_HELM_UPGRADE_SET_ARGS; then
+if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=120 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER; then
     echo "Successfully upgraded, switching colour to $OFFLINE_COLOUR"
     helm upgrade $TARGET_ENV-service-$APP_NAME $CHART_DIR -f $VALUES --install --force --wait --timeout=120 --set bluegreen.is_service_release=true,bluegreen.service.selector.colour=$OFFLINE_COLOUR
 else
