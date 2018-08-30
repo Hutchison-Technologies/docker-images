@@ -1,5 +1,5 @@
-# Alpine + Docker + GCR
+# Alpine + Docker + GCR + Kubectl
 
-This image is based on the [alpine:3.8](https://hub.docker.com/_/alpine/) image. On top of this, it has `docker`, `docker-compose`, `python3`, and `docker-credential-gcr` installed.
+This image is based on the [alpine-docker-gcr](https://hub.docker.com/r/hutchisont/alpine-docker-gcr/) image. On top of this, it has `kubectl` installed.
 
-This image is useful for [building and pushing images to GCR in CI workflow when you are able to connect to a remote docker host](https://circleci.com/docs/2.0/building-docker-images/).
+It also contains an `image_name.sh` script which, given a target env (staging, prod) and an app (example-api), will return the image in use by the production live colour.
