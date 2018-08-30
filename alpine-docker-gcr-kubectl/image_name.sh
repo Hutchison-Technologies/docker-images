@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ "$#" -ne 1 ]
+if [ "$#" -ne 2 ]
 then
   echo "Usage: image_name.sh TARGET_ENV APP_NAME"
   exit 1
