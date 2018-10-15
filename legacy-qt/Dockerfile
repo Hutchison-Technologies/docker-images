@@ -69,9 +69,6 @@ RUN locale-gen en_US.UTF-8 && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure lo
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/qt/${QTM}/gcc_64/bin:/opt/qt5/bin
 ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/
 
-
-# FROM secondbase
-
 WORKDIR /root
 
 RUN apt-get update && apt-get install -y \
