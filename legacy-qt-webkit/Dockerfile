@@ -1,14 +1,13 @@
 FROM hutchisont/legacy-qt:latest
 
 WORKDIR /root
-RUN git clone git://code.qt.io/qt/qtwebkit.git
-RUN cd qtwebkit/ && \
+RUN git clone git://code.qt.io/qt/qtwebkit.git && \
+    cd qtwebkit/ && \
     qtchooser -qt=qt5 -run-tool=qmake . && \
     make -j8 && \
-    cp mkspecs/modules/* /opt/qt/5.7/gcc_64/mkspecs/modules/
-
-WORKDIR /root
-RUN git clone https://github.com/zint/zint.git && \
+    cp mkspecs/modules/* /opt/qt/5.7/gcc_64/mkspecs/modules/ && \
+    cd /root && \
+    git clone https://github.com/zint/zint.git && \
     cd zint && \
     cmake . && \
     make -j8 && \

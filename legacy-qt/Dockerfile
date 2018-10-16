@@ -52,6 +52,7 @@ RUN apt-get update -q && \
     qtbase5-private-dev \
     qtdeclarative5-private-dev \
     libqt5serialport5-dev \
+    libqt5opengl5-dev \
     && apt-get clean
 
 ENV QT=5.7.1
