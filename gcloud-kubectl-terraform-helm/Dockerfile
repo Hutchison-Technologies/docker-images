@@ -1,7 +1,7 @@
 FROM google/cloud-sdk:slim
 
-ENV TERRAFORM_VERSION=0.11.7
-ENV TERRAFORM_SHA256SUM=6b8ce67647a59b2a3f70199c304abca0ddec0e49fd060944c26f666298e23418
+ENV TERRAFORM_VERSION=0.11.10
+ENV TERRAFORM_SHA256SUM=43543a0e56e31b0952ea3623521917e060f2718ab06fe2b2d506cfaa14d54527
 
 RUN apt-get update && apt-get install -y apt-utils gettext jq git curl zip unzip kubectl wget && \
     curl https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip > terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
