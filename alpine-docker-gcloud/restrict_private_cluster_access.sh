@@ -21,7 +21,7 @@ else
   printf ${GOOGLE_SERVICE_KEY_BLOB} | base64 -d > ${GOOGLE_APPLICATION_CREDENTIALS}
 fi
 
-gcloud auth activate-service-account $(cat ${GOOGLE_APPLICATION_CREDENTIALS} | jq -r -M \".client_email\") --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
 
 if [[ -z "${PROJECT_ID}" ]]; then
   echo "PROJECT_ID was not set."
@@ -44,7 +44,7 @@ else
   gcloud beta container clusters get-credentials --region ${REGION} ${CLUSTER_ID}
 fi
 
-# gcloud container clusters update ${CLUSTER_ID} --region=${REGION} --enable-master-authorized-networks --master-authorized-networks="${CIDR}"
+gcloud container clusters update ${CLUSTER_ID} --region=${REGION} --enable-master-authorized-networks --master-authorized-networks="${CIDR}"
 
 gcloud auth revoke --all
 rm ${GOOGLE_APPLICATION_CREDENTIALS}
