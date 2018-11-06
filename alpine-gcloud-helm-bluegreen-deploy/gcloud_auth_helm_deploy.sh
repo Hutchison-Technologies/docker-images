@@ -65,7 +65,7 @@ fi
 helm dep update ${CHART_DIR} 
 helm dep build ${CHART_DIR}
 
-if ! helm lint --strict -f ${CHART_DIR}; then
+if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
   echo "${CHART_DIR} contains malformed chart."
   exit 1
 fi
