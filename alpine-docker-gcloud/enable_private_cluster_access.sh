@@ -21,7 +21,7 @@ else
   printf ${GOOGLE_SERVICE_KEY_BLOB} | base64 -d > ${GOOGLE_APPLICATION_CREDENTIALS}
 fi
 
-gcloud auth activate-service-account $(cat ${GOOGLE_APPLICATION_CREDENTIALS} | jq -r -M \".client_email\") --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
 
 if [[ -z "${PROJECT_ID}" ]]; then
   echo "PROJECT_ID was not set."
