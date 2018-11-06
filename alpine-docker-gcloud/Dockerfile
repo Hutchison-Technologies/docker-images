@@ -4,6 +4,8 @@ ENV PATH /google-cloud-sdk/bin:$PATH
 
 WORKDIR /
 COPY image_name.sh .
+COPY enable_private_cluster_access.sh .
+COPY restrict_private_cluster_access.sh .
 
 RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq && \
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
