@@ -6,9 +6,35 @@ then
   exit 1
 fi
 
+valid_cidr_network() {
+  local ip="${1%/*}"    # strip bits to leave ip address
+  local bits="${1#*/}"  # strip ip address to leave bits
+  local IFS=.; local -a a=($ip)
+
+  # Sanity checks (only simple regexes)
+  [[ $ip =~ ^[0-9]+(\.[0-9]+){3}$ ]] || return 1
+  [[ $bits =~ ^[0-9]+$ ]] || return 1
+  [[ $bits -gt 32 ]] || return 1
+
+  # Create an array of 8-digit binary numbers from 0 to 255
+  local -a binary=({0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1})
+  local binip=""
+
+  # Test and append values of quads
+  for quad in {0..3}; do
+    [[ "${a[$quad]}" -gt 255 ]] && return 1
+    printf -v binip '%s%s' "$binip" "${binary[${a[$quad]}]}"
+  done
+
+  # Fail if any bits are set in the host portion
+  [[ ${binip:$bits} = *1* ]] && return 1
+
+  return 0
+}
+
 CIDR=$1
 
-if ! printf $CIDR | grep -Po '(\d+\.){3}\d+/\d+';
+if ! valid_cidr_network ${CIDR};
 then
   echo "$CIDR Not a valid CIDR"
   exit 1
