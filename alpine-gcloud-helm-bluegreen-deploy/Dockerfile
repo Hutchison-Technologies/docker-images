@@ -9,9 +9,6 @@ ENV HELM_URL https://storage.googleapis.com/kubernetes-helm/${FILENAME}
 
 WORKDIR /
 
-COPY deploy.sh .
-COPY dispel.sh .
-
 RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq && \
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
@@ -24,3 +21,7 @@ RUN apk --update --no-cache add ca-certificates wget python curl tar git bash op
     rm -rf /tmp && \
     helm init --client-only && \
     mkdir /tmp
+
+COPY deploy.sh .
+COPY dispel.sh .
+COPY gcloud_auth_helm_deploy.sh .
