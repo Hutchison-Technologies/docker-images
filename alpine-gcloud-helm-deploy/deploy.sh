@@ -17,7 +17,7 @@ echo "Deploying $TARGET_VER from $CHART_DIR to: $TARGET_ENV-$APP_NAME"
 if [[ -z "${ADDITIONAL_HELM_UPGRADE_SET_ARGS}" ]]; then
     echo "With additional set args $ADDITIONAL_HELM_UPGRADE_SET_ARGS"
 fi
-if helm upgrade $TARGET_ENV-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=120 --set microservice.deployment.version=$TARGET_VER; then
+if helm upgrade $TARGET_ENV-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=300 --set microservice.deployment.version=$TARGET_VER; then
     echo "Successfully upgraded"
 else
     LAST_GOOD_REV=$(helm history ${TARGET_ENV}-${APP_NAME} -o json | jq -r -M --arg DEPLOYED "DEPLOYED" '[.[] | select(.status==$DEPLOYED)] | reverse | .[0] | .revision')

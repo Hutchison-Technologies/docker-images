@@ -73,7 +73,7 @@ fi
 if [[ -z "${TARGET_VER}" ]]; then
   echo "NON-VERSIONED DEPLOY!"
   echo "Deploying from ${CHART_DIR} to: ${TARGET_ENV}-${APP_NAME}"
-  if helm upgrade ${TARGET_ENV}-${APP_NAME} ${CHART_DIR} -f ${CHART_DIR}/${TARGET_ENV}.yaml --install --force --recreate-pods --wait --timeout=120; then
+  if helm upgrade ${TARGET_ENV}-${APP_NAME} ${CHART_DIR} -f ${CHART_DIR}/${TARGET_ENV}.yaml --install --force --recreate-pods --wait --timeout=300; then
       echo "Successfully upgraded"
   else
       LAST_GOOD_REV=$(helm history ${TARGET_ENV}-${APP_NAME} -o json | jq -r -M --arg DEPLOYED "DEPLOYED" '[.[] | select(.status==$DEPLOYED)] | reverse | .[0] | .revision')
