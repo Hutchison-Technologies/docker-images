@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-ENV VERSION v2.10.0-rc.1
+ENV VERSION v2.12.1
 ENV HOME /
 ENV PATH /google-cloud-sdk/bin:$PATH
 ENV CLOUDSDK_PYTHON_SITEPACKAGES 1
