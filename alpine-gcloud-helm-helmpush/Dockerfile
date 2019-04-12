@@ -9,7 +9,7 @@ ENV HELM_URL https://storage.googleapis.com/kubernetes-helm/${FILENAME}
 
 WORKDIR /
 
-RUN apk --update add ca-certificates wget python curl tar git bash && \
+RUN apk --update add ca-certificates wget python curl tar git bash openssh && \
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
     rm google-cloud-sdk.zip && \
