@@ -11,7 +11,7 @@ ENV HELM_URL https://storage.googleapis.com/kubernetes-helm/${FILENAME}
 RUN apk add --update git curl gcc build-base
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 WORKDIR ${GOPATH}/src/github.com/Hutchison-Technologies
-RUN git clone git@github.com:Hutchison-Technologies/bluegreen-deployer.git && \
+RUN git clone https://github.com/Hutchison-Technologies/bluegreen-deployer.git && \
     cd bluegreen-deployer && \
     dep ensure && \
     go install
