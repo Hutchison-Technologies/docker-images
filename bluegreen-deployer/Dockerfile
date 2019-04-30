@@ -2,7 +2,7 @@ FROM golang:1.12.4-alpine3.9
 
 ENV GO111MODULE=off
 
-RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq
+RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq gcc build-base
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 WORKDIR ${GOPATH}/src/github.com/Hutchison-Technologies
 
