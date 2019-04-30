@@ -18,9 +18,6 @@ if [[ -z "${OFFLINE_COLOUR}" ]]; then
 fi
 
 echo "Deploying $TARGET_VER from $CHART_DIR to: $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME"
-if [[ -z "${ADDITIONAL_HELM_UPGRADE_SET_ARGS}" ]]; then
-    echo "With additional set args $ADDITIONAL_HELM_UPGRADE_SET_ARGS"
-fi
 if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=300 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER; then
     echo "Successfully upgraded, switching colour to $OFFLINE_COLOUR"
     helm upgrade $TARGET_ENV-service-$APP_NAME $CHART_DIR -f $VALUES --install --force --wait --timeout=300 --set bluegreen.is_service_release=true,bluegreen.service.selector.colour=$OFFLINE_COLOUR
