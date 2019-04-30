@@ -12,6 +12,8 @@ RUN cd bluegreen-deployer && \
     dep ensure -v && \
     go install
 
+FROM alpine:latest
+COPY --from=0 /go/bin/bluegreen-deployer /usr/local/bin/
 ENV VERSION v2.12.1
 ENV HOME /
 ENV PATH /google-cloud-sdk/bin:$PATH
@@ -20,7 +22,8 @@ ENV FILENAME helm-${VERSION}-linux-amd64.tar.gz
 ENV HELM_URL https://storage.googleapis.com/kubernetes-helm/${FILENAME}
 WORKDIR /
 
-RUN wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
+RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq && \
+    wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
     rm google-cloud-sdk.zip && \
     google-cloud-sdk/install.sh --usage-reporting=false --path-update=true --bash-completion=false --rc-path=/.bashrc --additional-components app kubectl alpha beta && \
