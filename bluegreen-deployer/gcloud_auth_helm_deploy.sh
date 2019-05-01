@@ -75,5 +75,3 @@ if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
 fi
 
 bluegreen-deployer -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
-
-rm $GOOGLE_APPLICATION_CREDENTIALS
