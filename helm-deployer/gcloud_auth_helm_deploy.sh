@@ -2,14 +2,15 @@
 
 if [ "$#" -ne 4 ]
 then
-  echo "Usage: gcloud_auth_helm_deploy.sh CHART_DIR APP_NAME TARGET_ENV TARGET_VER"
+  echo "Usage: gcloud_auth_helm_deploy.sh DEPLOY_TYPE CHART_DIR APP_NAME TARGET_ENV TARGET_VER"
   exit 1
 fi
 
-CHART_DIR=$1
-APP_NAME=$2
-TARGET_ENV=$3
-TARGET_VER=$4
+DEPLOY_TYPE=$1
+CHART_DIR=$2
+APP_NAME=$3
+TARGET_ENV=$4
+TARGET_VER=$5
 
 if [[ ! -d ${CHART_DIR} ]]; then
     echo "${CHART_DIR} is not a directory."
@@ -74,4 +75,4 @@ if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
   exit 1
 fi
 
-helm-deployer -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
+helm-deployer ${DEPLOY_TYPE} -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
