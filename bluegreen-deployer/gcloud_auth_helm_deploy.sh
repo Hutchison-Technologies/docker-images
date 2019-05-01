@@ -76,5 +76,4 @@ fi
 
 bluegreen-deployer -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
 
-gcloud auth revoke --all
 rm $GOOGLE_APPLICATION_CREDENTIALS
