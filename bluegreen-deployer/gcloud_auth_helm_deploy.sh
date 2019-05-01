@@ -21,16 +21,20 @@ if [ "${TARGET_ENV}" != "staging" ] && [ "${TARGET_ENV}" != "prod" ] ; then
     exit 1
 fi
 
-GOOGLE_APPLICATION_CREDENTIALS=/tmp/key.json
+if [[ -z "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
+  GOOGLE_APPLICATION_CREDENTIALS=/tmp/key.json
 
-if [[ -z "${GOOGLE_SERVICE_KEY_BLOB}" ]]; then
-  echo "GOOGLE_SERVICE_KEY_BLOB was not set."
-  exit 1
+  if [[ -z "${GOOGLE_SERVICE_KEY_BLOB}" ]]; then
+    echo "GOOGLE_SERVICE_KEY_BLOB was not set."
+    exit 1
+  else
+    printf ${GOOGLE_SERVICE_KEY_BLOB} | base64 -d > ${GOOGLE_APPLICATION_CREDENTIALS}
+  fi
+
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
 else
-  printf ${GOOGLE_SERVICE_KEY_BLOB} | base64 -d > ${GOOGLE_APPLICATION_CREDENTIALS}
+  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
 fi
-
-gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
 
 if [[ -z "${PROJECT_ID}" ]]; then
   echo "PROJECT_ID was not set."
