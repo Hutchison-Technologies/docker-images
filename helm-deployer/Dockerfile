@@ -7,13 +7,13 @@ RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 WORKDIR ${GOPATH}/src/github.com/Hutchison-Technologies
 
 
-RUN git clone --depth 1 --no-tags https://github.com/Hutchison-Technologies/bluegreen-deployer.git/
-RUN cd bluegreen-deployer && \
+RUN git clone --depth 1 --no-tags https://github.com/Hutchison-Technologies/helm-deployer.git/
+RUN cd helm-deployer && \
     dep ensure -v && \
     go install
 
 FROM alpine:latest
-COPY --from=0 /go/bin/bluegreen-deployer /usr/local/bin/
+COPY --from=0 /go/bin/helm-deployer /usr/local/bin/
 ENV VERSION v2.12.1
 ENV HOME /
 ENV PATH /google-cloud-sdk/bin:$PATH

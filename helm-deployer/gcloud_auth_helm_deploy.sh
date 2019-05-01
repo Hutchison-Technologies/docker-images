@@ -74,4 +74,4 @@ if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
   exit 1
 fi
 
-bluegreen-deployer -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
+helm-deployer -chart-dir ${CHART_DIR} -app-name ${APP_NAME} -target-env ${TARGET_ENV} -app-version ${TARGET_VER}
