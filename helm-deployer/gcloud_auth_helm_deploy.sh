@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ "$#" -ne 4 ]
+if [ "$#" -ne 5 ]
 then
   echo "Usage: gcloud_auth_helm_deploy.sh DEPLOY_TYPE CHART_DIR APP_NAME TARGET_ENV TARGET_VER"
   exit 1
