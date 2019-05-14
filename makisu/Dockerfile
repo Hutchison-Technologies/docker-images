@@ -4,7 +4,7 @@ FROM golang:1.12 AS builder
 RUN mkdir -p /workspace/github.com/uber
 WORKDIR /workspace/github.com/uber
 
-RUN git clone https://github.com/Rowern/makisu.git
+RUN git clone --single-branch --branch fix-registry-auth-errors https://github.com/Rowern/makisu.git
 WORKDIR /workspace/github.com/uber/makisu
 RUN make vendor && \
     make bins
