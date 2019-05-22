@@ -24,3 +24,4 @@ RUN apk add --update --no-cache inotify-tools \
     mix local.hex --force && \
     mix local.rebar --force && \
     mix archive.install https://github.com/phoenixframework/archives/raw/master/phx_new-${PHX_NEW_VER}.ez --force --sha512 ${PHX_NEW_HASH}
+COPY wait-for /
