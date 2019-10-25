@@ -14,7 +14,7 @@ RUN cd helm-deployer && \
 
 FROM alpine:latest
 COPY --from=0 /go/bin/helm-deployer /usr/local/bin/
-ENV VERSION v2.12.1
+ENV VERSION v2.15.1
 ENV HOME /
 ENV PATH /google-cloud-sdk/bin:$PATH
 ENV CLOUDSDK_PYTHON_SITEPACKAGES 1
