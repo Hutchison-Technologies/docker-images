@@ -17,10 +17,18 @@ if [[ -z "${OFFLINE_COLOUR}" ]]; then
   OFFLINE_COLOUR="blue"
 fi
 
+if [OFFLINE_COLOUR = "blue"]; then
+  ONLINE_COLOUR="green"
+else
+  ONLINE_COLOUR="blue"
+fi
+
 echo "Deploying $TARGET_VER from $CHART_DIR to: $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME"
 if helm upgrade $TARGET_ENV-$OFFLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=300 --set bluegreen.deployment.colour=$OFFLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER; then
     echo "Successfully upgraded, switching colour to $OFFLINE_COLOUR"
     helm upgrade $TARGET_ENV-service-$APP_NAME $CHART_DIR -f $VALUES --install --force --wait --timeout=300 --set bluegreen.is_service_release=true,bluegreen.service.selector.colour=$OFFLINE_COLOUR
+    echo "Successfully upgraded service, scaling old $ONLINE_COLOUR pods replica set to 0"
+    helm upgrade $TARGET_ENV-$ONLINE_COLOUR-$APP_NAME $CHART_DIR -f $VALUES --install --force --recreate-pods --wait --timeout=300 --set bluegreen.deployment.colour=$ONLINE_COLOUR,bluegreen.deployment.version=$TARGET_VER    
 else
     LAST_GOOD_REV=$(helm history ${TARGET_ENV}-${OFFLINE_COLOUR}-${APP_NAME} -o json | jq -r -M --arg DEPLOYED "DEPLOYED" '[.[] | select(.status==$DEPLOYED)] | reverse | .[0] | .revision')
     
