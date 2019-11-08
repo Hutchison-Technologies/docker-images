@@ -35,4 +35,4 @@ RUN apk --update --no-cache add ca-certificates wget python curl tar git bash op
     helm init --client-only && \
     mkdir /tmp
 
-COPY *.sh ./
+COPY . .
