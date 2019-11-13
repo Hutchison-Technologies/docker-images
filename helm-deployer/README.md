@@ -7,7 +7,16 @@ There are additional shell scripts to check the install, log you into gcloud via
 ## Helm Deployer Go Application
 This app also pulls in the [hutchison-t/helm-deployer](https://github.com/Hutchison-Technologies/helm-deployer) image from github, and builds it within the docker image, making the gcloud_helm_deploy cli go application available.
 
-If you wish to modify our GreenBlue deploy process, please modify this go service. Once happy with the changes, you'll need to rebuild this image locally, tag it like:
+If you wish to modify our GreenBlue deploy process, please modify this go service. Once happy with the changes, you'll need to rebuild this image locally.
+
+To build, please build with a --no-cache flag like:
+```
+➜ docker build . --no-cache
+```
+
+No-cache is required to ensure that we pull in the latest Go "helm deployer" application.
+
+After the build is complete, (this may take a while) tag it like:
 ```
 ➜ docker tag *imageID* hutchisont/helm-deployer:latest 
 ```
