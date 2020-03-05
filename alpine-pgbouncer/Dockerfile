@@ -6,8 +6,10 @@ RUN apk --update add \
     libevent-dev \
     curl \
     openssl-dev \
-    postgresql-client && \
-    curl https://pgbouncer.github.io/downloads/files/1.9.0/pgbouncer-1.9.0.tar.gz | tar xvz && \
+    postgresql-client \
+    gzip \
+    tar && \
+    curl https://www.pgbouncer.org/downloads/files/1.9.0/pgbouncer-1.9.0.tar.gz | tar -xvz && \
     cd pgbouncer-1.9.0 && \
     ./configure --prefix=/usr/local --with-libevent=libevent-prefix && \
     make && \
