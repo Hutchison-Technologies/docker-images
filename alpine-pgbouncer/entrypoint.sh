@@ -44,7 +44,7 @@ log_connections = ${LOG_CONNECTIONS:-1}
 log_disconnections = ${LOG_DISCONNECTIONS:-1}
 log_pooler_errors = ${LOG_POOLER_ERRORS:-1}
 stats_period = ${STATS_PERIOD:-60}
-ignore_startup_parameters = ${IGNORE_STARTUP_PARAMETERS}
+ignore_startup_parameters = ${IGNORE_STARTUP_PARAMETERS:-extra_float_digits}
 tcp_keepalive = ${TCP_KEEPALIVE:-1}
 
 [databases]
