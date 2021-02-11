@@ -11,4 +11,4 @@ RUN apt-get update && apt-get install -y apt-utils gettext jq git curl zip unzip
     rm -f terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
     curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh && \
     chmod 700 get_helm.sh && \
-    ./get_helm.sh -v v2.15.1
+    ./get_helm.sh -v v3.5.2
