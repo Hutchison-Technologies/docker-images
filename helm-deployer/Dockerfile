@@ -19,17 +19,15 @@ ENV PATH /google-cloud-sdk/bin:$PATH
 ENV CLOUDSDK_PYTHON_SITEPACKAGES 1
 WORKDIR /
 
-RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq && \
+RUN apk --update --no-cache add ca-certificates wget py-pip curl tar git bash openssl openssh gzip jq && \   
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
     rm google-cloud-sdk.zip && \
-    google-cloud-sdk/install.sh --usage-reporting=false --path-update=true --bash-completion=false --rc-path=/.bashrc --additional-components app kubectl alpha beta && \
+    google-cloud-sdk/install.sh --usage-reporting=false --path-update=true --bash-completion=false --rc-path=/.bashrc --additional-components alpha beta && \
     google-cloud-sdk/bin/gcloud config set --installation component_manager/disable_update_check true && \
-    curl -fsSL -o /get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 && \
-    chmod +x /get_helm.sh && \
-    /get_helm.sh --no-sudo && \
-    helm init --stable-repo-url https://charts.helm.sh/stable --client-only && \
-    mkdir /tmp
+    https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
+    curl -LO 'https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl' && \
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 COPY gcloud_auth_helm_deploy.sh ./
 COPY gcloud_auth_helm_dispel.sh ./
