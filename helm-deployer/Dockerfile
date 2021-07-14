@@ -26,8 +26,8 @@ RUN apk add openssl && \
     rm google-cloud-sdk.zip && \
     google-cloud-sdk/install.sh --usage-reporting=false --path-update=true --bash-completion=false --rc-path=/.bashrc --additional-components alpha beta && \
     google-cloud-sdk/bin/gcloud config set --installation component_manager/disable_update_check true && \
-    https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
-    curl -LO 'https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl' && \
+    curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 COPY gcloud_auth_helm_deploy.sh ./
