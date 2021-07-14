@@ -2,7 +2,7 @@ FROM golang:1.12.4-alpine3.9
 
 ENV GO111MODULE=off
 
-RUN apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq gcc build-base
+RUN apk add && apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq gcc build-base
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 WORKDIR ${GOPATH}/src/github.com/Hutchison-Technologies
 
@@ -19,7 +19,8 @@ ENV PATH /google-cloud-sdk/bin:$PATH
 ENV CLOUDSDK_PYTHON_SITEPACKAGES 1
 WORKDIR /
 
-RUN apk --update --no-cache add ca-certificates wget py-pip curl tar git bash openssl openssh gzip jq && \   
+RUN apk add openssl && \
+    apk --update --no-cache add ca-certificates wget py-pip curl tar git bash openssl openssh gzip jq && \   
     wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && \
     unzip google-cloud-sdk.zip && \
     rm google-cloud-sdk.zip && \
