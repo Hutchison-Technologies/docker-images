@@ -9,12 +9,13 @@ This app also pulls in the [hutchison-t/helm-deployer](https://github.com/Hutchi
 
 If you wish to modify our GreenBlue deploy process, please modify this go service. Once happy with the changes, you'll need to rebuild this image locally.
 
-To build, please build with a --no-cache flag like:
+To build, please build with a --no-cache and --platform linux/amd64 flag like:
 ```
-➜ docker build . --no-cache
+➜ docker build . --no-cache --platform linux/amd64
 ```
 
 No-cache is required to ensure that we pull in the latest Go "helm deployer" application.
+--platform flag is required to ensure we build for GKE compatible architecture AMD64 rather than ARM, if this is not set then you will see issues in the workflow when delegating agents for jenkins steps, the specific error of the container will be like `standard_init_linux.go:228: exec user process caused: exec format error`
 
 After the build is complete, (this may take a while) tag it like:
 ```
