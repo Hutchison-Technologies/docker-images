@@ -1,15 +1,14 @@
-FROM golang:1.12.4-alpine3.9
+FROM golang:1.16.6-alpine3.14 as base
 
-ENV GO111MODULE=off
+ENV GO111MODULE=on
 
-RUN apk add && apk --update --no-cache add ca-certificates wget python curl tar git bash openssh gzip jq gcc build-base
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN apk add --update git curl gcc build-base bash
 WORKDIR ${GOPATH}/src/github.com/Hutchison-Technologies
 
 
 RUN git clone --depth 1 --no-tags https://github.com/Hutchison-Technologies/helm-deployer.git/
 RUN cd helm-deployer && \
-    dep ensure -v && \
+    go mod download && \
     go install
 
 FROM alpine:latest

@@ -53,8 +53,6 @@ else
   gcloud beta container clusters get-credentials --region ${REGION} ${CLUSTER_ID}
 fi
 
-helm init --wait --service-account tiller --client-only
-
 if [[ -z "${CHARTMUSEUM}" ]]; then
   echo "CHARTMUSEUM was not set."
   exit 1
