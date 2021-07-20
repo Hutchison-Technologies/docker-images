@@ -68,6 +68,8 @@ if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
   exit 1
 fi
 
+mv ${CHART_DIR}/charts/* ${CHART_DIR}
+
 /dispel.sh ${APP_NAME} ${TARGET_ENV}
 
 gcloud container images list-tags eu.gcr.io/${PROJECT_ID}/${APP_NAME} --filter='tags:*' --format='get(tags)' | while read -r tag ; do gcloud container images delete eu.gcr.io/${PROJECT_ID}/${APP_NAME}:$tag --force-delete-tags --quiet ; done
