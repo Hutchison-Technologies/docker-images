@@ -68,7 +68,7 @@ if ! helm lint -f ${CHART_DIR}/${TARGET_ENV}.yaml ${CHART_DIR}; then
   exit 1
 fi
 
-mv ${CHART_DIR}/charts/* ${CHART_DIR}
+cp ${CHART_DIR}/charts/* ${CHART_DIR}
 
 /dispel.sh ${APP_NAME} ${TARGET_ENV}
 
