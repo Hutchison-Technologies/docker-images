@@ -8,10 +8,11 @@ This image includes a `firestore-start.bash` script which will initialise the fi
 If you're using this entry point, you'll need to copy a `databaseFile.json` and a `serviceAccountKey.json` into your docker file.
 
 eg: 
-
+```
 COPY serviceAccountKey.json .
 COPY databaseFile.json .
 ENTRYPOINT ["./populatefirestore.bash"]
+```
 
 To obtain these files, folllow the steps below.
 
@@ -22,3 +23,7 @@ If you have NPM installed locally, you can install the import/export package via
 Once this is complete, you'll need to have get hold of a service account key from your gcp instance. You'll find this under IAM -> Service Account -> Keys. Generate a new one, and download it as json.
 
 You can now run `firestore-export --accountCredentials serviceAccountFile.json --backupFile backup.json`. A backup.json file will be generated and can be used by `firestore-import`. Don't run firestore import on your local system, this should only be done in the firestore. The system knows which GCP project to pull from automagically, as it utilises the information in the service account key.
+
+# Running
+
+Once you've followed the steps above, you can run the docker image. Please ensure that you pass the `-p 8080:8080` parameter into the run parameters to map the emulator port to your local 0.0.0.0:8080 port
