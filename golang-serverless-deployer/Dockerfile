@@ -8,7 +8,7 @@ RUN apk add --update ca-certificates git gcc bash libc-dev curl
 
 RUN yarn global add serverless
 
-RUN go get golang.org/x/lint/golint
+RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
 
 RUN go get cloud.google.com/go/firestore@v1.6.1
 
