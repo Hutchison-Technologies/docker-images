@@ -1,4 +1,4 @@
-FROM gcr.io/kaniko-project/executor:v0.15.0-debug AS kaniko
+FROM gcr.io/kaniko-project/executor:debug-v0.15.0 AS kaniko
 
 FROM scratch
 FROM golang:1.16.15-alpine3.15
