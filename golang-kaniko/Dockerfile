@@ -1,4 +1,4 @@
-FROM gcr.io/kaniko-project/executor:v1.6.0-debug AS kaniko
+FROM gcr.io/kaniko-project/executor:v0.15.0-debug AS kaniko
 
 FROM scratch
 FROM golang:1.16.15-alpine3.15
@@ -25,3 +25,6 @@ ENV USER /root
 ENV PATH $PATH:/kaniko
 ENV SSL_CERT_DIR /kaniko/ssl/certs
 ENV DOCKER_CONFIG /kaniko/.docker/
+
+# Set the default shell to bash
+SHELL ["/bin/bash", "-c"]
