@@ -1,18 +1,15 @@
 FROM gcr.io/kaniko-project/executor:debug-v0.15.0 AS kaniko
 
-FROM scratch
-FROM golang:1.16.15-alpine3.15
+FROM golang:1.16.15
 
 ENV PACKAGES \
     git \
     bash \
     coreutils \
     ca-certificates \  
-    gcc \
-    libc-dev \ 
     curl 
 
-RUN apk --update-cache add $PACKAGES
+RUN apt install $PACKAGES
 
 RUN go get -u github.com/GoogleCloudPlatform/docker-credential-gcr
 
