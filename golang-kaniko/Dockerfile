@@ -10,9 +10,13 @@ ENV PACKAGES \
     ca-certificates \  
     gcc \
     libc-dev \ 
-    curl
+    curl 
 
 RUN apk --update-cache add $PACKAGES
+
+RUN go get -u github.com/GoogleCloudPlatform/docker-credential-gcr
+RUN cd $GOPATH/src/github.com/GoogleCloudPlatform/docker-credential-gcr
+RUN sudo mv ./docker-credential-gcr /usr/bin/docker-credential-gcr
 
 COPY --from=kaniko /kaniko/.config /kaniko/.config
 COPY --from=kaniko /kaniko/.docker /kaniko/.docker
