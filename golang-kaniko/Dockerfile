@@ -7,6 +7,10 @@ ENV PACKAGES \
     git \
     bash \
     coreutils
+    ca-certificates \  
+    gcc \
+    libc-dev \ 
+    curl
 
 RUN apk --update-cache add $PACKAGES
 
