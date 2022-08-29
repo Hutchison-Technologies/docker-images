@@ -6,7 +6,7 @@ FROM golang:1.16.15-alpine3.15
 ENV PACKAGES \
     git \
     bash \
-    coreutils
+    coreutils \
     ca-certificates \  
     gcc \
     libc-dev \ 
