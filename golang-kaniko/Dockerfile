@@ -1,4 +1,4 @@
-FROM gcr.io/kaniko-project/executor:debug-v0.15.0 AS kaniko
+FROM gcr.io/kaniko-project/v0.15.0:debug AS kaniko
 
 FROM scratch
 FROM golang:1.18.1
@@ -12,28 +12,18 @@ ENV PACKAGES \
 
 RUN apt install $PACKAGES
 
-RUN go install github.com/GoogleCloudPlatform/docker-credential-gcr@latest 
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.4/bin/linux/amd64/kubectl
+RUN chmod u+x kubectl && mv kubectl /bin/kubectl
 
-COPY --from=kaniko /kaniko/.config /kaniko/.config
-COPY --from=kaniko /kaniko/.docker /kaniko/.docker
-COPY --from=kaniko /kaniko/executor /kaniko/executor
-COPY --from=kaniko /kaniko/ssl /kaniko/ssl
+#
+# Add kaniko to this image by re-using binaries and steps from official image
+#
+COPY --from=kaniko /kaniko/ /kaniko/
 COPY --from=kaniko /kaniko/warmer /kaniko/warmer
+COPY --from=kaniko /kaniko/docker-credential-gcr /kaniko/docker-credential-gcr
+COPY --from=kaniko /kaniko/.docker /kaniko/.docker
+COPY --from=busybox:1.32.0 /bin /busybox
 
-ENV HOME /root
-ENV USER /root
-ENV PATH $PATH:/kaniko
-ENV SSL_CERT_DIR /kaniko/ssl/certs
+ENV PATH $PATH:/usr/local/bin:/kaniko:/busybox
 ENV DOCKER_CONFIG /kaniko/.docker/
-
-
-SHELL ["/bin/bash", "-c"]
-
-RUN docker-credential-gcr configure-docker
-RUN echo $PATH
-RUN ln $GOPATH/bin/docker-credential-gcr /usr/local/bin
-RUN ln $GOPATH/bin/docker-credential-gcr /usr/bin
-RUN ls -l $GOPATH/bin | grep docker
-RUN ls -l /usr/local/bin | grep docker
-
-RUN docker-credential-gcr configure-docker
+ENV DOCKER_CREDENTIAL_GCR_CONFIG /kaniko/.config/gcloud/docker_credential_gcr_config.json
