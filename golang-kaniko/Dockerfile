@@ -13,7 +13,6 @@ ENV PACKAGES \
 RUN apt install $PACKAGES
 
 RUN go install github.com/GoogleCloudPlatform/docker-credential-gcr@latest 
-ENV PATH "$HOME/go/bin:$PATH"
 
 COPY --from=kaniko /kaniko/.config /kaniko/.config
 COPY --from=kaniko /kaniko/.docker /kaniko/.docker
@@ -27,5 +26,14 @@ ENV PATH $PATH:/kaniko
 ENV SSL_CERT_DIR /kaniko/ssl/certs
 ENV DOCKER_CONFIG /kaniko/.docker/
 
-# Set the default shell to bash
+
 SHELL ["/bin/bash", "-c"]
+
+RUN docker-credential-gcr configure-docker
+RUN echo $PATH
+RUN ln $GOPATH/bin/docker-credential-gcr /usr/local/bin
+RUN ln $GOPATH/bin/docker-credential-gcr /usr/bin
+RUN ls -l $GOPATH/bin | grep docker
+RUN ls -l /usr/local/bin | grep docker
+
+RUN docker-credential-gcr configure-docker
