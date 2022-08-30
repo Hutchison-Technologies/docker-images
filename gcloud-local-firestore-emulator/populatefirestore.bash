@@ -4,7 +4,7 @@
 set -m
 
 # Config gcloud project
-gcloud config set project acs-test-319213
+gcloud config set project acs-ent-staging-083511f1
 
 # Start emulator and push to bg
 gcloud --quiet beta emulators firestore start --host-port=0.0.0.0:8080 &
@@ -13,7 +13,7 @@ gcloud --quiet beta emulators firestore start --host-port=0.0.0.0:8080 &
 sleep 10
 
 # Import database backup to database
-firestore-import -y --accountCredentials serviceAccountKey.json --backupFile databaseFile.json 
+firestore-import -y --accountCredentials ./serviceAccountKey.json --backupFile ./databaseBackupFile.json
 
 # Pull gcloud to foreground
 fg %1
