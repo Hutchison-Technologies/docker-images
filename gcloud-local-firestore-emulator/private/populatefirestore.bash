@@ -4,7 +4,7 @@
 set -m
 
 # Config gcloud project
-gcloud config set project acs-ent-staging-083511f1
+gcloud config set project acs-ent-staging-ec899941
 
 # Start emulator and push to bg
 gcloud --quiet beta emulators firestore start --host-port=0.0.0.0:8080 &

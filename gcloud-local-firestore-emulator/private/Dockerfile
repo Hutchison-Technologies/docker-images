@@ -17,7 +17,7 @@ ENV PORT 8080
 ENV FIRESTORE_EMULATOR_HOST localhost:8080
 
 COPY populatefirestore.bash .
-COPY databaseBackupFile.json .
-COPY serviceAccountKey.json .
+#COPY databaseBackupFile.json .
+#COPY serviceAccountKey.json .
 
 ENTRYPOINT ["./populatefirestore.bash"]

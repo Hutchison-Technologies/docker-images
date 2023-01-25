@@ -10,10 +10,10 @@ RUN yarn global add serverless
 
 RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
 
-RUN go get cloud.google.com/go/firestore@v1.6.1
+RUN go get cloud.google.com/go/firestore@v1.9.0
 
 RUN go get github.com/GoogleCloudPlatform/functions-framework-go@v1.6.1
 
 RUN go get google.golang.org/api@v0.90.0
 
-RUN go get github.com/stretchr/testify@v1.8.0
+RUN go get github.com/stretchr/testify@v1.8.1
