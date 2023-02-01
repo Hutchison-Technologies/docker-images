@@ -1,4 +1,4 @@
-FROM elixir:1.14.3-alpine
+FROM elixir:1.7.2-alpine
 
 WORKDIR /usr/app
 
