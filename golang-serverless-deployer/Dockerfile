@@ -1,4 +1,4 @@
-FROM golang:1.16.15-alpine3.15
+FROM golang:1.21.6-alpine3.19
 
 RUN apk update
 
@@ -10,7 +10,11 @@ RUN yarn global add serverless
 
 RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
 
-RUN go get cloud.google.com/go/firestore@v1.9.0
+WORKDIR /usr/src/app
+
+RUN go mod init hutchisont/serverlessdeployer
+
+RUN go get cloud.google.com/go/firestore@v1.14.0
 
 RUN go get github.com/GoogleCloudPlatform/functions-framework-go@v1.6.1
 
