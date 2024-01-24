@@ -18,6 +18,6 @@ RUN go get cloud.google.com/go/firestore@v1.14.0
 
 RUN go get github.com/GoogleCloudPlatform/functions-framework-go@v1.6.1
 
-RUN go get google.golang.org/api@v0.90.0
+RUN go get google.golang.org/api@v0.151.0
 
-RUN go get github.com/stretchr/testify@v1.8.1
+RUN go get github.com/stretchr/testify@v1.8.4
