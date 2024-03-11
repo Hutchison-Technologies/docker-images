@@ -2,9 +2,9 @@ FROM golang:1.21.6-alpine3.19
 
 RUN apk update
 
-RUN apk add yarn
+RUN apk add nodejs yarn build-base npm
 
-RUN apk add --update ca-certificates git gcc bash libc-dev curl
+RUN apk add --update ca-certificates git gcc bash libc-dev curl 
 
 RUN yarn global add serverless
 
