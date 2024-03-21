@@ -2,7 +2,7 @@
 
 This image is built with Golang `v1.21.6`
 
-This image is used as a testbox in our pipeline. It does not have the dependencies installed to deploy code to GCP.
+This image is not used anymore, do not use this;
 
 ## Build and push process
 

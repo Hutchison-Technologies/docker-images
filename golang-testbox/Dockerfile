@@ -6,6 +6,4 @@ RUN apk add nodejs yarn build-base npm
 
 RUN apk add --update ca-certificates git gcc bash libc-dev curl 
 
-RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
-
-WORKDIR /usr/src/app
+RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.56.2
