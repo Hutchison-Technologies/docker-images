@@ -1,4 +1,4 @@
-FROM google/cloud-sdk:slim
+FROM google/cloud-sdk:latest
 
 ENV TERRAFORM_VERSION=0.12.9
 ENV TERRAFORM_SHA256SUM=69712c6216cc09b7eca514b9fb137d4b1fead76559c66f338b4185e1c347ace5
