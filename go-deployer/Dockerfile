@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-deploy .
 # Runtime image with gcloud CLI
 FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine AS runtime
 
-# Install necessary packages: bash, go, git, curl, gcc for builds, ca-certificates
+# Install bash, go, git, curl, gcc for builds, ca-certificates
 RUN apk add --no-cache bash ca-certificates git gcc libc-dev curl go
 
 WORKDIR /workspace
