@@ -26,5 +26,3 @@ WORKDIR /workspace
 
 # Copy the binary
 COPY --from=builder /app/go-deploy /usr/local/bin/go-deploy
-
-ENTRYPOINT ["go-deploy"]
