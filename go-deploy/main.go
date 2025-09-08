@@ -22,7 +22,7 @@ import (
 func main() {
 	fmt.Printf("TRACE: Looping through the repo...\n")
 
-	// Loop through all the folders in the repo and get the deployer config file
+	// Loop through all the folders in the repo and get the deployer config file.
 	listOfDirs, err := os.ReadDir("./")
 	if err != nil {
 		fmt.Printf("ERR: Unable to read repo - %s\n", err.Error())
