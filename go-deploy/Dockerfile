@@ -9,15 +9,13 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-deploy .
 
-FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine AS runtime
+FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine
 
-RUN apk update
-
-RUN apk add --update --no-cache bash ca-certificates git gcc libc-dev curl
+RUN apk add --update ca-certificates git gcc bash libc-dev curl
 
 COPY --from=golang:1.23.10-alpine3.22 /usr/local/go/ /usr/local/go/
 
-ENV PATH="/usr/lib/go/bin:${PATH}"
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin
 
