@@ -149,7 +149,6 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 	// Loop through the diff file lines
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Printf("TRACE: Processing line - %s\n", line)
 
 		// Get the folder if go.mod or go.sum was modified
 		if strings.HasPrefix(line, "diff --git") {
@@ -306,8 +305,8 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 
 	// Authenticate with gcloud
 	gcloudAuth := exec.Command("gcloud", "auth",
-		"login",
-		"--cred-file", credentialsPath,
+		"activate-service-account",
+		"--key-file", credentialsPath,
 	)
 
 	out, err := gcloudAuth.CombinedOutput()
