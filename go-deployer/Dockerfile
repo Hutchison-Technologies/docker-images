@@ -1,5 +1,5 @@
-# Build the Go binary
-FROM  golang:1.23.10-alpine3.22 AS builder
+# Get a Go builder image
+FROM golang:1.23.10-alpine3.22 AS builder
 
 WORKDIR /app
 
@@ -10,19 +10,22 @@ RUN go mod download
 # Copy source
 COPY . .
 
-# Build binary
-RUN go build -o go-deploy .
+# Build static binary to avoid CGO dependencies in runtime
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o go-deploy .
 
-# Runtime with gcloud
-FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine AS base
+# Runtime image with gcloud CLI
+FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine AS runtime
 
-RUN apk add --update ca-certificates git gcc bash libc-dev curl
-
-COPY --from=golang:1.23.10-alpine3.22 /usr/local/go/ /usr/local/go/
-
-ENV PATH="/usr/local/go/bin:${PATH}"
+# Install necessary packages: bash, go, git, curl, gcc for builds, ca-certificates
+RUN apk add --no-cache bash ca-certificates git gcc libc-dev curl go
 
 WORKDIR /workspace
 
-# Copy the binary
+# Install golangci-lint
+RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s
+
+# Copy the static binary from builder
 COPY --from=builder /app/go-deploy /usr/local/bin/go-deploy
+
+# Default to bash shell
+CMD ["/bin/bash"]
