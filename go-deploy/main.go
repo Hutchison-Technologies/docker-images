@@ -36,7 +36,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("TRACE: Found provider config...")
 	fmt.Println("TRACE: Parsing provider config...")
 
 	// Unmarshal the provider config
