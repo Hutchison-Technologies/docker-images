@@ -47,6 +47,8 @@ func main() {
 		return
 	}
 
+	fmt.Printf("TRACE: Found provider config - %+v\n", providerConfig)
+
 	// Open diff file with git changes
 	fmt.Printf("TRACE: Reading git diff...\n")
 	diffOut, err := os.ReadFile("changes.diff")
@@ -148,6 +150,7 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 	// Loop through the diff file lines
 	for scanner.Scan() {
 		line := scanner.Text()
+		fmt.Printf("TRACE: Processing line - %s\n", line)
 
 		// Get the folder if go.mod or go.sum was modified
 		if strings.HasPrefix(line, "diff --git") {
