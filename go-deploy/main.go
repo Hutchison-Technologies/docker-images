@@ -202,7 +202,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 
 	for _, dir := range listOfDirs {
 		// Ignore hidden directories
-		if strings.Contains(dir.Name(), ".") || strings.Contains(dir.Name(), "deploy") {
+		if strings.Contains(dir.Name(), ".") || strings.Contains(dir.Name(), "deploy") || strings.Contains(dir.Name(), "Jenkinsfile") {
 			continue
 		}
 
