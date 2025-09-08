@@ -22,7 +22,9 @@ RUN apk add --no-cache bash ca-certificates git gcc libc-dev curl go
 WORKDIR /workspace
 
 # Install golangci-lint
-RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s
+RUN wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin
+
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Copy the static binary from builder
 COPY --from=builder /app/go-deploy /usr/local/bin/go-deploy
