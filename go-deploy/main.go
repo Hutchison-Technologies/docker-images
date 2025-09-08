@@ -142,7 +142,7 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 
 	scanner := bufio.NewScanner(bytes.NewReader(diff))
 
-	funcRegex := regexp.MustCompile(`^\s*func\s*(?:\([^\)]*\)\s*)?(\w+)`)
+	funcRegex := regexp.MustCompile(`\bfunc\s*(?:\([^\)]*\)\s*)?(\w+)\s*\(`)
 	currentFile := ""
 
 	// Loop through the diff file lines
@@ -170,6 +170,23 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 			if len(matches) > 1 && matches[1] != "" {
 				funcName := matches[1]
 				functionsToBeAdded.Insert(funcName)
+			}
+		}
+
+		// Function definition modified in-place
+		if strings.HasPrefix(line, "@@") {
+			// Extract the part after @@ @@
+			parts := strings.SplitN(line, "@@", 3)
+
+			if len(parts) == 3 {
+				trailingCode := strings.TrimSpace(parts[2])
+				matches := funcRegex.FindStringSubmatch(trailingCode)
+
+				if len(matches) > 1 && matches[1] != "" {
+					funcName := matches[1]
+					// Add to added functions
+					functionsToBeAdded.Insert(funcName)
+				}
 			}
 		}
 
