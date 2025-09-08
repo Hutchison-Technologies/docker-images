@@ -25,15 +25,15 @@ func main() {
 	// Loop through all the folders in the repo and get the deployer config file.
 	listOfDirs, err := os.ReadDir("./")
 	if err != nil {
-		fmt.Printf("ERR: Unable to read repo - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToReadRepoError, err.Error())
+		panic(UnableToReadRepoError)
 	}
 
 	// Get provider config
 	providerConfigBytes, err := os.ReadFile("provider_config.yml")
 	if err != nil {
-		fmt.Printf("ERR: Unable to read provider config file - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToReadProviderConfigError, err.Error())
+		panic(UnableToReadProviderConfigError)
 	}
 
 	fmt.Println("TRACE: Parsing provider config...")
@@ -42,18 +42,18 @@ func main() {
 	providerConfig := Provider{}
 	err = yaml.Unmarshal(providerConfigBytes, &providerConfig)
 	if err != nil {
-		fmt.Printf("ERR: Unable to unmarshal provider config file - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToUnmarshalProviderConfigError, err.Error())
+		panic(UnableToUnmarshalProviderConfigError)
 	}
 
-	fmt.Printf("TRACE: Found provider config - %+v\n", providerConfig)
+	fmt.Println("TRACE: Parsed provider config successfully...")
 
 	// Open diff file with git changes
 	fmt.Printf("TRACE: Reading git diff...\n")
 	diffOut, err := os.ReadFile("changes.diff")
 	if err != nil {
-		fmt.Printf("ERR: Unable to read git diff - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToReadGitDiffError, err.Error())
+		panic(UnableToReadGitDiffError)
 	}
 
 	// Parse the git diff output and get a list of functions to deploy
@@ -62,25 +62,24 @@ func main() {
 	// Get the deployer config for the repo
 	deployerConfigsForTheRepo, err := getDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig)
 	if err != nil {
-		fmt.Printf("ERR: Unable to get deployer configs for the repo - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToGetDeployerConfigsForTheRepoError, err.Error())
+		panic(UnableToGetDeployerConfigsForTheRepoError)
 	}
 
 	fmt.Printf("TRACE: %d functions to process...\n", len(deployerConfigsForTheRepo))
-	fmt.Printf("TRACE: Generated deployer config for the repo - %+v\n", deployerConfigsForTheRepo)
 
 	credentialsPath := providerConfig.Credentials
 	if credentialsPath == "" {
-		fmt.Println("ERR: No credentials path provided in provider config")
-		return
+		fmt.Println(NoCredentialsPathProvidedInProviderConfigError)
+		panic(NoCredentialsPathProvidedInProviderConfigError)
 	}
 
 	// Setup gcloud
 	fmt.Println("TRACE: Setting up gcloud...")
 	err = setupGcloud(credentialsPath, providerConfig)
 	if err != nil {
-		fmt.Printf("ERR: Unable to setup gcloud - %s\n", err.Error())
-		return
+		fmt.Printf("%s - %s\n", UnableToSetupGcloudError, err.Error())
+		panic(UnableToSetupGcloudError)
 	}
 
 	fmt.Println("TRACE: Formatting inputs for deployment...")
@@ -134,6 +133,8 @@ func main() {
 		fmt.Printf("%+v\n", err)
 		fmt.Println("---------------------------------------------------------")
 	}
+
+	panic(DeploymentFailedError)
 }
 
 func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
@@ -303,7 +304,10 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 func setupGcloud(credentialsPath string, providerConfig Provider) error {
 	fmt.Printf("TRACE: Authenticating with gcloud...\n")
 
-	// Authenticate with gcloud
+	// Set GOOGLE_APPLICATION_CREDENTIALS for gcloud and SDK tools
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath)
+
+	// Authenticate with gcloud.
 	gcloudAuth := exec.Command("gcloud", "auth",
 		"activate-service-account",
 		"--key-file", credentialsPath,
@@ -315,8 +319,6 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 		return err
 	}
 
-	fmt.Printf("TRACE: Setting up project...\n")
-
 	// Set the project
 	gcloudProject := exec.Command("gcloud", "config", "set",
 		"project", providerConfig.Project,
@@ -325,6 +327,17 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 	out, err = gcloudProject.CombinedOutput()
 	if err != nil {
 		fmt.Printf("ERR: Unable to set project - %s\n", string(out))
+		return err
+	}
+
+	impersonateServiceAccount := exec.Command("gcloud", "config", "set",
+		"auth/impersonate_service_account",
+		providerConfig.ServiceAccountEmail,
+	)
+
+	out, err = impersonateServiceAccount.CombinedOutput()
+	if err != nil {
+		fmt.Printf("ERR: Unable to set impersonate service account - %s\n", string(out))
 		return err
 	}
 
@@ -362,6 +375,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 			"--set-env-vars", fmt.Sprintf("PERSONAL_DETAILS_ENC_KEY=%s", deployerConfigForFunction.Provider.Environment["PERSONAL_DETAILS_ENC_KEY"]),
 			"--set-env-vars", fmt.Sprintf("PASS_ENCRYPTION_SECRET=%s", deployerConfigForFunction.Provider.Environment["PASS_ENCRYPTION_SECRET"]),
 			"--set-env-vars", fmt.Sprintf("PASS_ENCRYPTION_IV=%s", deployerConfigForFunction.Provider.Environment["PASS_ENCRYPTION_IV"]),
+			"--quiet",
 		)
 	}
 
