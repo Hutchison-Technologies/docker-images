@@ -247,9 +247,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 			return nil, err
 		}
 
-		// For each dir, cd into it and check if it has a deployer config file
-		// If it does, then parse it and get the functions to deploy
-		// If it doesn't, then skip	it
+		// For each dir, cd into it and get the deployer config file
 		configFile, err := os.ReadFile(dir.Name() + "/deployer_config.yml")
 		if err != nil {
 			fmt.Printf("ERR: Unable to read deployer config file - %s\n", err.Error())
@@ -330,6 +328,7 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 		return err
 	}
 
+	// Impersonate the service account
 	impersonateServiceAccount := exec.Command("gcloud", "config", "set",
 		"auth/impersonate_service_account",
 		providerConfig.ServiceAccountEmail,
