@@ -383,6 +383,8 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 			"--region", deployerConfigForFunction.Provider.Region,
 		}
 
+		// TODO add vpc connector, firewall rule, network and subnet once we have the shared vpc setup
+
 		// Add env vars
 		if len(envVars) > 0 {
 			cmdArgs = append(cmdArgs, "--set-env-vars", envVarsArg)
