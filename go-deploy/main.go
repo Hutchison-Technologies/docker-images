@@ -350,32 +350,48 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 	if deployerConfigForFunction.IsDelete {
 		fmt.Printf("TRACE: Deleting %s...\n", deployerConfigForFunction.Handler)
 
-		// Format cmd
-		cmdStruct = *exec.Command("gcloud", "run", "services",
+		// Format cmd args
+		cmdArgs := []string{
+			"run", "services",
 			"delete",
 			deployerConfigForFunction.DeploymentName,
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--quiet",
-		)
+		}
+
+		// Execute the command
+		cmdStruct = *exec.Command("gcloud", cmdArgs...)
+
 	} else {
 		fmt.Printf("TRACE: Deploying %s...\n", deployerConfigForFunction.Handler)
 
+		// Pass env variables
+		var envVars []string
+		for key, value := range deployerConfigForFunction.Provider.Environment {
+			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
+		}
+
+		envVarsArg := strings.Join(envVars, ",")
+
 		// Format cmd
-		cmdStruct = *exec.Command("gcloud", "run", "deploy", deployerConfigForFunction.DeploymentName,
+		cmdArgs := []string{
+			"run", "deploy", deployerConfigForFunction.DeploymentName,
 			"--source", deployerConfigForFunction.DirectoryName,
 			"--function", deployerConfigForFunction.Handler,
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
-			"--memory", deployerConfigForFunction.MemorySize+"Mi",
+			"--memory", deployerConfigForFunction.MemorySize + "Mi",
 			"--region", deployerConfigForFunction.Provider.Region,
-			"--allow-unauthenticated",
-			"--ingress", "internal",
-			"--set-env-vars", fmt.Sprintf("GOOGLE_CLOUD_PROJECT=%s", deployerConfigForFunction.Provider.Environment["GOOGLE_CLOUD_PROJECT_ID"]),
-			"--set-env-vars", fmt.Sprintf("PASSWORD_PEPPER=%s", deployerConfigForFunction.Provider.Environment["PASSWORD_PEPPER"]),
-			"--set-env-vars", fmt.Sprintf("PERSONAL_DETAILS_ENC_KEY=%s", deployerConfigForFunction.Provider.Environment["PERSONAL_DETAILS_ENC_KEY"]),
-			"--set-env-vars", fmt.Sprintf("PASS_ENCRYPTION_SECRET=%s", deployerConfigForFunction.Provider.Environment["PASS_ENCRYPTION_SECRET"]),
-			"--set-env-vars", fmt.Sprintf("PASS_ENCRYPTION_IV=%s", deployerConfigForFunction.Provider.Environment["PASS_ENCRYPTION_IV"]),
-			"--quiet",
-		)
+		}
+
+		// TODO add vpc connector, firewall rule, network and subnet once we have the shared vpc setup
+
+		// Add env vars
+		if len(envVars) > 0 {
+			cmdArgs = append(cmdArgs, "--set-env-vars", envVarsArg)
+		}
+
+		// Execute the command
+		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 	}
 
 	out, err := cmdStruct.CombinedOutput()
