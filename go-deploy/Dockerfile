@@ -1,4 +1,4 @@
-FROM golang:1.23.10-alpine3.22 AS builder
+FROM  golang:1.25.7-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ FROM gcr.io/google.com/cloudsdktool/google-cloud-cli:alpine
 
 RUN apk add --update ca-certificates git gcc bash libc-dev curl
 
-COPY --from=golang:1.23.10-alpine3.22 /usr/local/go/ /usr/local/go/
+COPY --from=golang:1.25.7-alpine3.23 /usr/local/go/ /usr/local/go/
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
