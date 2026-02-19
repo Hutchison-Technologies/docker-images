@@ -266,13 +266,14 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 			if slices.Contains(listOfFunctionsToDelete, functionConfig.Handler) {
 				// Add the function to the deployer config to be deleted
 				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
-					IsDelete:       true,
-					DeploymentName: functionDeploymentName,
-					DirectoryName:  dir.Name(),
-					Provider:       providerConfig,
-					Handler:        functionConfig.Handler,
-					MemorySize:     functionConfig.MemorySize,
-					Timeout:        functionConfig.Timeout,
+					IsDelete:               true,
+					DeploymentName:         functionDeploymentName,
+					DirectoryName:          dir.Name(),
+					Provider:               providerConfig,
+					Handler:                functionConfig.Handler,
+					MemorySize:             functionConfig.MemorySize,
+					Timeout:                functionConfig.Timeout,
+					EnvironmentForFunction: functionConfig.EnvironmentForFunction,
 				})
 			}
 
@@ -285,13 +286,14 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 
 				// Add the function to the deployer config
 				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
-					IsDelete:       false,
-					DeploymentName: functionDeploymentName,
-					DirectoryName:  dir.Name(),
-					Provider:       providerConfig,
-					Handler:        functionConfig.Handler,
-					MemorySize:     functionConfig.MemorySize,
-					Timeout:        functionConfig.Timeout,
+					IsDelete:               false,
+					DeploymentName:         functionDeploymentName,
+					DirectoryName:          dir.Name(),
+					Provider:               providerConfig,
+					Handler:                functionConfig.Handler,
+					MemorySize:             functionConfig.MemorySize,
+					Timeout:                functionConfig.Timeout,
+					EnvironmentForFunction: functionConfig.EnvironmentForFunction,
 				})
 			}
 		}
@@ -371,9 +373,22 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 	} else {
 		fmt.Printf("TRACE: Deploying %s...\n", deployerConfigForFunction.Handler)
 
-		// Format env variables
-		var envVars []string
+		// Merge global and local env vars
+		mergedEnv := map[string]string{}
+
+		// Add global env
 		for key, value := range deployerConfigForFunction.Provider.Environment {
+			mergedEnv[key] = value
+		}
+
+		// Override with function level env
+		for key, value := range deployerConfigForFunction.EnvironmentForFunction {
+			mergedEnv[key] = value
+		}
+
+		// Format final env vars
+		var envVars []string
+		for key, value := range mergedEnv {
 			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
 		}
 
