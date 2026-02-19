@@ -272,6 +272,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 					Provider:       providerConfig,
 					Handler:        functionConfig.Handler,
 					MemorySize:     functionConfig.MemorySize,
+					Timeout:        functionConfig.Timeout,
 				})
 			}
 
@@ -290,6 +291,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 					Provider:       providerConfig,
 					Handler:        functionConfig.Handler,
 					MemorySize:     functionConfig.MemorySize,
+					Timeout:        functionConfig.Timeout,
 				})
 			}
 		}
@@ -303,7 +305,11 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 	fmt.Printf("TRACE: Authenticating with gcloud...\n")
 
 	// Set GOOGLE_APPLICATION_CREDENTIALS for gcloud and SDK tools
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath)
+	err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath)
+	if err != nil {
+		fmt.Printf("ERR: Unable to set GOOGLE_APPLICATION_CREDENTIALS - %s\n", err.Error())
+		return err
+	}
 
 	// Authenticate with gcloud.
 	gcloudAuth := exec.Command("gcloud", "auth",
@@ -365,7 +371,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 	} else {
 		fmt.Printf("TRACE: Deploying %s...\n", deployerConfigForFunction.Handler)
 
-		// Pass env variables
+		// Format env variables
 		var envVars []string
 		for key, value := range deployerConfigForFunction.Provider.Environment {
 			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
@@ -381,6 +387,11 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
 			"--memory", deployerConfigForFunction.MemorySize + "Mi",
 			"--region", deployerConfigForFunction.Provider.Region,
+		}
+
+		// Add timeout if provided
+		if deployerConfigForFunction.Timeout != "" {
+			cmdArgs = append(cmdArgs, "--timeout", deployerConfigForFunction.Timeout)
 		}
 
 		// TODO add vpc connector, firewall rule, network and subnet once we have the shared vpc setup

@@ -12,6 +12,7 @@ type Provider struct {
 type Function struct {
 	Handler    string `yaml:"handler"`
 	MemorySize string `yaml:"memorySize"`
+	Timeout    string `yaml:"timeout"`
 }
 
 type DeployerConfig struct {
@@ -19,6 +20,7 @@ type DeployerConfig struct {
 	DeploymentName string
 	Handler        string
 	MemorySize     string
+	Timeout        string
 	DirectoryName  string
 	Provider       Provider
 }
