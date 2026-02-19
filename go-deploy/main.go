@@ -220,35 +220,38 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	deployerConfigsForTheRepo := []DeployerConfig{}
 
 	for _, dir := range listOfDirs {
+		dirName := dir.Name()
+
 		// Ignore hidden directories
-		if strings.Contains(dir.Name(), ".") || strings.Contains(dir.Name(), "deploy") || strings.Contains(dir.Name(), "Jenkinsfile") {
+		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") {
+			fmt.Printf("TRACE: Skipping directory - %s\n", dirName)
 			continue
 		}
 
-		fmt.Printf("TRACE: Found directory - %s\n", dir.Name())
+		fmt.Printf("TRACE: Found directory - %s\n", dirName)
 
 		fmt.Printf("TRACE: Running go mod tidy...\n")
 		// Run go mod tidy inside the dir
 		cmdStruct := exec.Command("go", "mod", "tidy")
-		cmdStruct.Dir = dir.Name()
+		cmdStruct.Dir = dirName
 		out, err := cmdStruct.CombinedOutput()
 		if err != nil {
-			fmt.Printf("ERR: Unable to process %s - %s\n", dir.Name(), string(out))
+			fmt.Printf("ERR: Unable to process %s - %s\n", dirName, string(out))
 			return nil, err
 		}
 
 		fmt.Printf("TRACE: Running go mod vendor...\n")
 		// Run go mod vendor inside the dir
 		cmdStruct = exec.Command("go", "mod", "vendor")
-		cmdStruct.Dir = dir.Name()
+		cmdStruct.Dir = dirName
 		out, err = cmdStruct.CombinedOutput()
 		if err != nil {
-			fmt.Printf("ERR: Unable to process %s - %s\n", dir.Name(), string(out))
+			fmt.Printf("ERR: Unable to process %s - %s\n", dirName, string(out))
 			return nil, err
 		}
 
 		// For each dir, cd into it and get the deployer config file
-		configFile, err := os.ReadFile(dir.Name() + "/deployer_config.yml")
+		configFile, err := os.ReadFile(dirName + "/deployer_config.yml")
 		if err != nil {
 			fmt.Printf("ERR: Unable to read deployer config file - %s\n", err.Error())
 			return nil, err
@@ -268,7 +271,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
 					IsDelete:               true,
 					DeploymentName:         functionDeploymentName,
-					DirectoryName:          dir.Name(),
+					DirectoryName:          dirName,
 					Provider:               providerConfig,
 					Handler:                functionConfig.Handler,
 					MemorySize:             functionConfig.MemorySize,
@@ -278,7 +281,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 			}
 
 			if slices.Contains(listOfFunctionsToDeploy, functionConfig.Handler) ||
-				(listOfFoldersToDeploy != nil && slices.Contains(listOfFoldersToDeploy, dir.Name())) {
+				(listOfFoldersToDeploy != nil && slices.Contains(listOfFoldersToDeploy, dirName)) {
 				// Skip function if it is to be deleted
 				if slices.Contains(listOfFunctionsToDelete, functionConfig.Handler) {
 					continue
@@ -288,7 +291,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
 					IsDelete:               false,
 					DeploymentName:         functionDeploymentName,
-					DirectoryName:          dir.Name(),
+					DirectoryName:          dirName,
 					Provider:               providerConfig,
 					Handler:                functionConfig.Handler,
 					MemorySize:             functionConfig.MemorySize,
