@@ -397,11 +397,15 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 
 		envVarsArg := strings.Join(envVars, ",")
 
+		// Format label
+		label := fmt.Sprintf("service=%s", deployerConfigForFunction.DirectoryName)
+
 		// Format cmd
 		cmdArgs := []string{
 			"run", "deploy", deployerConfigForFunction.DeploymentName,
 			"--source", deployerConfigForFunction.DirectoryName,
 			"--function", deployerConfigForFunction.Handler,
+			"--update-labels", label,
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
 			"--memory", deployerConfigForFunction.MemorySize + "Mi",
 			"--region", deployerConfigForFunction.Provider.Region,
