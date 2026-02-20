@@ -398,7 +398,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 		envVarsArg := strings.Join(envVars, ",")
 
 		// Format label
-		label := fmt.Sprintf("service=%s", deployerConfigForFunction.DirectoryName)
+		label := fmt.Sprintf("service=%s", strings.ToLower(deployerConfigForFunction.DirectoryName))
 
 		// Format cmd
 		cmdArgs := []string{
