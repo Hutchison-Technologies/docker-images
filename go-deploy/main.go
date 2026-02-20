@@ -85,13 +85,13 @@ func main() {
 
 	errorChannel := make(chan DeploymentError, len(deployerConfigsForTheRepo))
 
-	fmt.Printf("TRACE: Starting batch deployment with %d parallel deployments...\n", MAX_DEPLOYMENTS_IN_PARALLEL)
+	fmt.Printf("TRACE: Starting batch deployment with %d batches and %d in parallel...\n", len(deployerConfigsForTheRepo)/MAX_DEPLOYMENTS_IN_PARALLEL, MAX_DEPLOYMENTS_IN_PARALLEL)
 
 	batchSize := MAX_DEPLOYMENTS_IN_PARALLEL
 	var currentBatch []DeployerConfig
 	batchCounter := 0
 
-	for _, deployerConfigForFunction := range deployerConfigsForTheRepo {
+	for i, deployerConfigForFunction := range deployerConfigsForTheRepo {
 		currentBatch = append(currentBatch, deployerConfigForFunction)
 		batchCounter++
 
@@ -99,8 +99,7 @@ func main() {
 			// Process the batch
 			processDeploymentBatch(currentBatch, errorChannel)
 
-			// fmt.Println("TRACE: Waiting 60 seconds before next batch...")
-			// time.Sleep(60 * time.Second)
+			fmt.Printf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo))
 
 			// Reset batch
 			currentBatch = nil
