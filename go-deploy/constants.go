@@ -1,3 +1,3 @@
 package main
 
-const MAX_DEPLOYMENTS_IN_PARALLEL = 80
+const MAX_DEPLOYMENTS_IN_PARALLEL = 60

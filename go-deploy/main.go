@@ -84,40 +84,37 @@ func main() {
 
 	fmt.Println("TRACE: Formatting inputs for deployment...")
 
-	wg := sync.WaitGroup{}
-	wg.Add(len(deployerConfigsForTheRepo))
-
-	inputChannel := make(chan DeployerConfig, len(deployerConfigsForTheRepo))
 	errorChannel := make(chan DeploymentError, len(deployerConfigsForTheRepo))
 
-	// Populate the input channel
+	fmt.Printf("TRACE: Starting batch deployment...\n")
+
+	batchSize := MAX_DEPLOYMENTS_IN_PARALLEL
+	var currentBatch []DeployerConfig
+	batchCounter := 0
+
 	for _, deployerConfigForFunction := range deployerConfigsForTheRepo {
-		inputChannel <- deployerConfigForFunction
+		currentBatch = append(currentBatch, deployerConfigForFunction)
+		batchCounter++
+
+		if batchCounter == batchSize {
+			// Process the batch
+			processDeploymentBatch(currentBatch, errorChannel)
+
+			fmt.Println("TRACE: Waiting 10 seconds before next batch...")
+			time.Sleep(10 * time.Second)
+
+			// Reset batch
+			currentBatch = nil
+			batchCounter = 0
+		}
 	}
 
-	// Close the input channel
-	close(inputChannel)
-
-	fmt.Printf("TRACE: Setting up ticker...\n")
-
-	// Create a ticker that ticks every (60s / max deployments in parallel) seconds
-	// This is used to limit the number of deployments that can be done within a minute
-	deploymentTicker := time.NewTicker(time.Minute / MAX_DEPLOYMENTS_IN_PARALLEL)
-
-	for inputForDeployment := range inputChannel {
-		fmt.Printf("TRACE: Waiting for ticker to tick...\n")
-
-		// Wait for the ticker to tick
-		<-deploymentTicker.C
-
-		// Kick off a goroutine for each function
-		go deployFunction(inputForDeployment, &wg, errorChannel)
+	// Process the last batch
+	if batchCounter > 0 {
+		processDeploymentBatch(currentBatch, errorChannel)
 	}
 
-	wg.Wait()
-
-	fmt.Println("TRACE: Stopping ticker and closing error channel...")
-	deploymentTicker.Stop()
+	fmt.Printf("TRACE: Closing error channel...\n")
 	close(errorChannel)
 
 	if len(errorChannel) == 0 {
@@ -355,6 +352,17 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 	return nil
 }
 
+func processDeploymentBatch(deploymentBatch []DeployerConfig, errorChannel chan DeploymentError) {
+	var wg sync.WaitGroup
+	wg.Add(len(deploymentBatch))
+
+	for _, deployConfig := range deploymentBatch {
+		go deployFunction(deployConfig, &wg, errorChannel)
+	}
+
+	wg.Wait()
+}
+
 func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup, errorChannel chan DeploymentError) {
 	cmdStruct := exec.Cmd{}
 
@@ -430,7 +438,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 	out, err := cmdStruct.CombinedOutput()
 	if err != nil {
 		// Format errMessage
-		errMessage := fmt.Sprintf("ERR: Unable to process (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out))
+		errMessage := fmt.Sprintf("ERR: Unable to process (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out), err.Error())
 		fmt.Println(errMessage)
 
 		// Format error
