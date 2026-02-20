@@ -85,7 +85,7 @@ func main() {
 
 	errorChannel := make(chan DeploymentError, len(deployerConfigsForTheRepo))
 
-	fmt.Printf("TRACE: Starting batch deployment...\n")
+	fmt.Printf("TRACE: Starting batch deployment with %d parallel deployments...\n", MAX_DEPLOYMENTS_IN_PARALLEL)
 
 	batchSize := MAX_DEPLOYMENTS_IN_PARALLEL
 	var currentBatch []DeployerConfig
