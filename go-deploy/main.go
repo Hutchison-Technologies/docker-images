@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/go-set/v2"
 	yaml "gopkg.in/yaml.v3"
@@ -100,8 +99,8 @@ func main() {
 			// Process the batch
 			processDeploymentBatch(currentBatch, errorChannel)
 
-			fmt.Println("TRACE: Waiting 10 seconds before next batch...")
-			time.Sleep(10 * time.Second)
+			// fmt.Println("TRACE: Waiting 60 seconds before next batch...")
+			// time.Sleep(60 * time.Second)
 
 			// Reset batch
 			currentBatch = nil
