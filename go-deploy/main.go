@@ -128,12 +128,30 @@ func main() {
 
 	fmt.Println("ERR: Deployment failed with the following errors:")
 
+	failedFunctions := map[string][]string{}
+
 	// Check for errors
 	for err := range errorChannel {
+		failedFunctions[err.DirectoryName] = append(failedFunctions[err.DirectoryName], err.DeploymentName)
 		fmt.Println("---------------------------------------------------------")
 		fmt.Printf("%+v\n", err)
 		fmt.Println("---------------------------------------------------------")
 	}
+
+	// Log all the functions that failed
+	fmt.Println("---------------------------------------------------------")
+	fmt.Println("Functions that failed:")
+	for directory, deployments := range failedFunctions {
+		fmt.Println("---------------------------------------------------------")
+		fmt.Printf("Directory: %s\n", directory)
+
+		for _, deploymentName := range deployments {
+			fmt.Printf("  - %s\n", deploymentName)
+		}
+
+		fmt.Println("---------------------------------------------------------")
+	}
+	fmt.Println("---------------------------------------------------------")
 
 	panic(constants.DeploymentFailedError)
 }
