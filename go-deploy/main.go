@@ -80,14 +80,6 @@ func main() {
 		panic(constants.NoCredentialsPathProvidedInProviderConfigError)
 	}
 
-	// Commented out to setup auth for each function	// // Setup gcloud
-	// fmt.Println("TRACE: Setting up gcloud...")
-	// err = setupGcloud(credentialsPath, providerConfig)
-	// if err != nil {
-	// 	fmt.Printf("%s - %s\n", constants.UnableToSetupGcloudError, err.Error())
-	// 	panic(constants.UnableToSetupGcloudError)
-	// }
-
 	fmt.Println("TRACE: Formatting inputs for deployment...")
 
 	errorChannel := make(chan models.DeploymentError, len(deployerConfigsForTheRepo))
@@ -325,56 +317,6 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	// Return the deployer configs
 	return deployerConfigsForTheRepo, nil
 }
-
-// Commented out to setup auth for each function
-// func setupGcloud(credentialsPath string, providerConfig models.Provider) error {
-// 	fmt.Printf("TRACE: Authenticating with gcloud...\n")
-
-// 	// Set GOOGLE_APPLICATION_CREDENTIALS for gcloud and SDK tools
-// 	err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath)
-// 	if err != nil {
-// 		fmt.Printf("ERR: Unable to set GOOGLE_APPLICATION_CREDENTIALS - %s\n", err.Error())
-// 		return err
-// 	}
-
-// 	// Authenticate with gcloud.
-// 	gcloudAuth := exec.Command("gcloud", "auth",
-// 		"activate-service-account",
-// 		"--key-file", credentialsPath,
-// 	)
-
-// 	out, err := gcloudAuth.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("ERR: Unable to authenticate with gcloud - %s\n", string(out))
-// 		return err
-// 	}
-
-// 	// Set the project
-// 	gcloudProject := exec.Command("gcloud", "config", "set",
-// 		"project", providerConfig.Project,
-// 	)
-
-// 	out, err = gcloudProject.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("ERR: Unable to set project - %s\n", string(out))
-// 		return err
-// 	}
-
-// 	// Impersonate the service account
-// 	impersonateServiceAccount := exec.Command("gcloud", "config", "set",
-// 		"auth/impersonate_service_account",
-// 		providerConfig.ServiceAccountEmail,
-// 	)
-
-// 	out, err = impersonateServiceAccount.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Printf("ERR: Unable to set impersonate service account - %s\n", string(out))
-// 		return err
-// 	}
-
-// 	// Return success
-// 	return nil
-// }
 
 func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError) {
 	var wg sync.WaitGroup
