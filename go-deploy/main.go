@@ -399,9 +399,23 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			DirectoryName:  deployerConfigForFunction.DirectoryName,
 			Handler:        deployerConfigForFunction.Handler,
 		}
+
 		return
 	}
-	defer os.RemoveAll(tempDir)
+
+	defer func(errorChannel chan models.DeploymentError) {
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			errorChannel <- models.DeploymentError{
+				ErrorMessage:   fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error()),
+				DeploymentName: deployerConfigForFunction.DeploymentName,
+				DirectoryName:  deployerConfigForFunction.DirectoryName,
+				Handler:        deployerConfigForFunction.Handler,
+			}
+
+			return
+		}
+	}(errorChannel)
 
 	cmdStruct := exec.Cmd{}
 
@@ -504,5 +518,4 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	// Return success
 	fmt.Printf("TRACE: (Function: %s) processed (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out))
-	return
 }
