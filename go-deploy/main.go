@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"hutchisont/go-deployer/cmd"
+	"hutchisont/go-deployer/constants"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,20 +21,24 @@ import (
 // NOTE: The service account need to have `roles/serviceusage.serviceUsageConsumer` set
 
 func main() {
+	// Parse CMD flags
+	cmd := cmd.ParseCMD()
+	fmt.Printf("CMD: %+v\n", cmd)
+
 	fmt.Printf("TRACE: Looping through the repo...\n")
 
 	// Loop through all the folders in the repo and get the deployer config file.
 	listOfDirs, err := os.ReadDir("./")
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToReadRepoError, err.Error())
-		panic(UnableToReadRepoError)
+		fmt.Printf("%s - %s\n", constants.UnableToReadRepoError, err.Error())
+		panic(constants.UnableToReadRepoError)
 	}
 
 	// Get provider config
 	providerConfigBytes, err := os.ReadFile("provider_config.yml")
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToReadProviderConfigError, err.Error())
-		panic(UnableToReadProviderConfigError)
+		fmt.Printf("%s - %s\n", constants.UnableToReadProviderConfigError, err.Error())
+		panic(constants.UnableToReadProviderConfigError)
 	}
 
 	fmt.Println("TRACE: Parsing provider config...")
@@ -41,8 +47,8 @@ func main() {
 	providerConfig := Provider{}
 	err = yaml.Unmarshal(providerConfigBytes, &providerConfig)
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToUnmarshalProviderConfigError, err.Error())
-		panic(UnableToUnmarshalProviderConfigError)
+		fmt.Printf("%s - %s\n", constants.UnableToUnmarshalProviderConfigError, err.Error())
+		panic(constants.UnableToUnmarshalProviderConfigError)
 	}
 
 	fmt.Println("TRACE: Parsed provider config successfully...")
@@ -51,8 +57,8 @@ func main() {
 	fmt.Printf("TRACE: Reading git diff...\n")
 	diffOut, err := os.ReadFile("changes.diff")
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToReadGitDiffError, err.Error())
-		panic(UnableToReadGitDiffError)
+		fmt.Printf("%s - %s\n", constants.UnableToReadGitDiffError, err.Error())
+		panic(constants.UnableToReadGitDiffError)
 	}
 
 	// Parse the git diff output and get a list of functions to deploy
@@ -61,33 +67,33 @@ func main() {
 	// Get the deployer config for the repo
 	deployerConfigsForTheRepo, err := getDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig)
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToGetDeployerConfigsForTheRepoError, err.Error())
-		panic(UnableToGetDeployerConfigsForTheRepoError)
+		fmt.Printf("%s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error())
+		panic(constants.UnableToGetDeployerConfigsForTheRepoError)
 	}
 
 	fmt.Printf("TRACE: %d functions to process...\n", len(deployerConfigsForTheRepo))
 
 	credentialsPath := providerConfig.Credentials
 	if credentialsPath == "" {
-		fmt.Println(NoCredentialsPathProvidedInProviderConfigError)
-		panic(NoCredentialsPathProvidedInProviderConfigError)
+		fmt.Println(constants.NoCredentialsPathProvidedInProviderConfigError)
+		panic(constants.NoCredentialsPathProvidedInProviderConfigError)
 	}
 
 	// Setup gcloud
 	fmt.Println("TRACE: Setting up gcloud...")
 	err = setupGcloud(credentialsPath, providerConfig)
 	if err != nil {
-		fmt.Printf("%s - %s\n", UnableToSetupGcloudError, err.Error())
-		panic(UnableToSetupGcloudError)
+		fmt.Printf("%s - %s\n", constants.UnableToSetupGcloudError, err.Error())
+		panic(constants.UnableToSetupGcloudError)
 	}
 
 	fmt.Println("TRACE: Formatting inputs for deployment...")
 
 	errorChannel := make(chan DeploymentError, len(deployerConfigsForTheRepo))
 
-	fmt.Printf("TRACE: Starting batch deployment of %d in parallel...\n", MAX_DEPLOYMENTS_IN_PARALLEL)
+	fmt.Printf("TRACE: Starting batch deployment of %d in parallel...\n", cmd.MaxDeploymentsInParallel)
 
-	batchSize := MAX_DEPLOYMENTS_IN_PARALLEL
+	batchSize := cmd.MaxDeploymentsInParallel
 	var currentBatch []DeployerConfig
 	batchCounter := 0
 
@@ -129,7 +135,7 @@ func main() {
 		fmt.Println("---------------------------------------------------------")
 	}
 
-	panic(DeploymentFailedError)
+	panic(constants.DeploymentFailedError)
 }
 
 func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
@@ -204,8 +210,8 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 		}
 	}
 
-	fmt.Printf("TRACE: Found %d function(s) to add: %+v\n", functionsToBeAdded.Size(), functionsToBeAdded)
-	fmt.Printf("TRACE: Found %d function(s) to delete: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted)
+	fmt.Printf("TRACE: Found %d function(s) updated: %+v\n", functionsToBeAdded.Size(), functionsToBeAdded)
+	fmt.Printf("TRACE: Found %d function(s) removed: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted)
 	fmt.Printf("TRACE: Folder(s) to deploy as the go.mod/go.sum files were updated: %+v\n", foldersToDeploy)
 
 	return functionsToBeAdded.Slice(), functionsToBeDeleted.Slice(), foldersToDeploy.Slice()

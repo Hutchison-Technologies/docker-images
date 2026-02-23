@@ -1,4 +1,4 @@
-package main
+package constants
 
 var (
 	UnableToReadRepoError                          string = "ERR: Unable to read repo"
