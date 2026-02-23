@@ -336,40 +336,41 @@ func setupGcloud(credentialsPath string, providerConfig models.Provider) error {
 		return err
 	}
 
-	// Authenticate with gcloud.
-	gcloudAuth := exec.Command("gcloud", "auth",
-		"activate-service-account",
-		"--key-file", credentialsPath,
-	)
+	// Commented out to set the gcloud auth for each request
+	// // Authenticate with gcloud.
+	// gcloudAuth := exec.Command("gcloud", "auth",
+	// 	"activate-service-account",
+	// 	"--key-file", credentialsPath,
+	// )
 
-	out, err := gcloudAuth.CombinedOutput()
-	if err != nil {
-		fmt.Printf("ERR: Unable to authenticate with gcloud - %s\n", string(out))
-		return err
-	}
+	// out, err := gcloudAuth.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Printf("ERR: Unable to authenticate with gcloud - %s\n", string(out))
+	// 	return err
+	// }
 
-	// Set the project
-	gcloudProject := exec.Command("gcloud", "config", "set",
-		"project", providerConfig.Project,
-	)
+	// // Set the project
+	// gcloudProject := exec.Command("gcloud", "config", "set",
+	// 	"project", providerConfig.Project,
+	// )
 
-	out, err = gcloudProject.CombinedOutput()
-	if err != nil {
-		fmt.Printf("ERR: Unable to set project - %s\n", string(out))
-		return err
-	}
+	// out, err = gcloudProject.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Printf("ERR: Unable to set project - %s\n", string(out))
+	// 	return err
+	// }
 
-	// Impersonate the service account
-	impersonateServiceAccount := exec.Command("gcloud", "config", "set",
-		"auth/impersonate_service_account",
-		providerConfig.ServiceAccountEmail,
-	)
+	// // Impersonate the service account
+	// impersonateServiceAccount := exec.Command("gcloud", "config", "set",
+	// 	"auth/impersonate_service_account",
+	// 	providerConfig.ServiceAccountEmail,
+	// )
 
-	out, err = impersonateServiceAccount.CombinedOutput()
-	if err != nil {
-		fmt.Printf("ERR: Unable to set impersonate service account - %s\n", string(out))
-		return err
-	}
+	// out, err = impersonateServiceAccount.CombinedOutput()
+	// if err != nil {
+	// 	fmt.Printf("ERR: Unable to set impersonate service account - %s\n", string(out))
+	// 	return err
+	// }
 
 	// Return success
 	return nil
@@ -387,6 +388,21 @@ func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChanne
 }
 
 func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError) {
+	defer wg.Done()
+
+	// Create isolated gcloud config directory
+	tempDir, err := os.MkdirTemp("", "gcloud-*")
+	if err != nil {
+		errorChannel <- models.DeploymentError{
+			ErrorMessage:   fmt.Sprintf("ERR: Unable to create temp gcloud dir: %s", err.Error()),
+			DeploymentName: deployerConfigForFunction.DeploymentName,
+			DirectoryName:  deployerConfigForFunction.DirectoryName,
+			Handler:        deployerConfigForFunction.Handler,
+		}
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
 	cmdStruct := exec.Cmd{}
 
 	if deployerConfigForFunction.IsDelete {
@@ -398,7 +414,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"delete",
 			deployerConfigForFunction.DeploymentName,
 			"--region", deployerConfigForFunction.Provider.Region,
+			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
+			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
 		// Execute the command
@@ -440,6 +458,8 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
 			"--memory", deployerConfigForFunction.MemorySize + "Mi",
 			"--region", deployerConfigForFunction.Provider.Region,
+			"--project", deployerConfigForFunction.Provider.Project,
+			"--quiet",
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
@@ -459,6 +479,10 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 	}
 
+	cmdStruct.Env = append(os.Environ(),
+		"CLOUDSDK_CONFIG="+tempDir,
+	)
+
 	out, err := cmdStruct.CombinedOutput()
 	if err != nil {
 		// Format errMessage
@@ -475,11 +499,10 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 		// Pipe error to the error channel
 		errorChannel <- deploymentError
-		wg.Done()
 		return
 	}
 
 	// Return success
 	fmt.Printf("TRACE: (Function: %s) processed (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out))
-	wg.Done()
+	return
 }
