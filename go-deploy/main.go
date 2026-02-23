@@ -376,6 +376,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
+		// Log CMD args
+		fmt.Printf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " "))
+		
 		// Execute the command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 
@@ -432,6 +435,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		if len(envVars) > 0 {
 			cmdArgs = append(cmdArgs, "--set-env-vars", envVarsArg)
 		}
+
+		// Log CMD args
+		fmt.Printf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " "))
 
 		// Execute the command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
