@@ -372,6 +372,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
+			"--service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
@@ -416,6 +417,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
+			"--service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
