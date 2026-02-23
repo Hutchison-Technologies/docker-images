@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hutchisont/go-deployer/cmd"
 	"hutchisont/go-deployer/constants"
+	"hutchisont/go-deployer/models"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,7 +45,7 @@ func main() {
 	fmt.Println("TRACE: Parsing provider config...")
 
 	// Unmarshal the provider config
-	providerConfig := Provider{}
+	providerConfig := models.Provider{}
 	err = yaml.Unmarshal(providerConfigBytes, &providerConfig)
 	if err != nil {
 		fmt.Printf("%s - %s\n", constants.UnableToUnmarshalProviderConfigError, err.Error())
@@ -89,12 +90,12 @@ func main() {
 
 	fmt.Println("TRACE: Formatting inputs for deployment...")
 
-	errorChannel := make(chan DeploymentError, len(deployerConfigsForTheRepo))
+	errorChannel := make(chan models.DeploymentError, len(deployerConfigsForTheRepo))
 
 	fmt.Printf("TRACE: Starting batch deployment of %d in parallel...\n", cmd.MaxDeploymentsInParallel)
 
 	batchSize := cmd.MaxDeploymentsInParallel
-	var currentBatch []DeployerConfig
+	var currentBatch []models.DeployerConfig
 	batchCounter := 0
 
 	for i, deployerConfigForFunction := range deployerConfigsForTheRepo {
@@ -235,8 +236,8 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 	return functionsToBeAdded.Slice(), functionsToBeDeleted.Slice(), foldersToDeploy.Slice()
 }
 
-func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig Provider) ([]DeployerConfig, error) {
-	deployerConfigsForTheRepo := []DeployerConfig{}
+func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider) ([]models.DeployerConfig, error) {
+	deployerConfigsForTheRepo := []models.DeployerConfig{}
 
 	for _, dir := range listOfDirs {
 		dirName := dir.Name()
@@ -277,7 +278,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		}
 
 		// Unmarshal the config file
-		functionsConfig := map[string]Function{}
+		functionsConfig := map[string]models.Function{}
 		err = yaml.Unmarshal(configFile, &functionsConfig)
 		if err != nil {
 			fmt.Printf("ERR: Unable to unmarshal functions config file - %s\n", err.Error())
@@ -287,7 +288,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		for functionDeploymentName, functionConfig := range functionsConfig {
 			if slices.Contains(listOfFunctionsToDelete, functionConfig.Handler) {
 				// Add the function to the deployer config to be deleted
-				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
+				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, models.DeployerConfig{
 					IsDelete:               true,
 					DeploymentName:         functionDeploymentName,
 					DirectoryName:          dirName,
@@ -307,7 +308,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 				}
 
 				// Add the function to the deployer config
-				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, DeployerConfig{
+				deployerConfigsForTheRepo = append(deployerConfigsForTheRepo, models.DeployerConfig{
 					IsDelete:               false,
 					DeploymentName:         functionDeploymentName,
 					DirectoryName:          dirName,
@@ -325,7 +326,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	return deployerConfigsForTheRepo, nil
 }
 
-func setupGcloud(credentialsPath string, providerConfig Provider) error {
+func setupGcloud(credentialsPath string, providerConfig models.Provider) error {
 	fmt.Printf("TRACE: Authenticating with gcloud...\n")
 
 	// Set GOOGLE_APPLICATION_CREDENTIALS for gcloud and SDK tools
@@ -374,7 +375,7 @@ func setupGcloud(credentialsPath string, providerConfig Provider) error {
 	return nil
 }
 
-func processDeploymentBatch(deploymentBatch []DeployerConfig, errorChannel chan DeploymentError) {
+func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError) {
 	var wg sync.WaitGroup
 	wg.Add(len(deploymentBatch))
 
@@ -385,7 +386,7 @@ func processDeploymentBatch(deploymentBatch []DeployerConfig, errorChannel chan 
 	wg.Wait()
 }
 
-func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup, errorChannel chan DeploymentError) {
+func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError) {
 	cmdStruct := exec.Cmd{}
 
 	if deployerConfigForFunction.IsDelete {
@@ -439,6 +440,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
 			"--memory", deployerConfigForFunction.MemorySize + "Mi",
 			"--region", deployerConfigForFunction.Provider.Region,
+			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
 		// Add timeout if provided
@@ -464,7 +466,7 @@ func deployFunction(deployerConfigForFunction DeployerConfig, wg *sync.WaitGroup
 		fmt.Println(errMessage)
 
 		// Format error
-		deploymentError := DeploymentError{
+		deploymentError := models.DeploymentError{
 			ErrorMessage:   errMessage,
 			DeploymentName: deployerConfigForFunction.DeploymentName,
 			DirectoryName:  deployerConfigForFunction.DirectoryName,

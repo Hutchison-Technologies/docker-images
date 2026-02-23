@@ -1,4 +1,4 @@
-package main
+package models
 
 type Provider struct {
 	Runtime             string            `yaml:"runtime"`
