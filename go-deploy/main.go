@@ -458,15 +458,6 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		return
 	}
 
-	err = cmdStruct.Wait()
-	if err != nil {
-		// Format errMessage
-		errMessage := fmt.Sprintf("ERR: Deploy command failed (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
-		pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
-
-		return
-	}
-
 	// Wait for 20 seconds to get the build ID before polling
 	time.Sleep(20 * time.Second)
 
@@ -503,7 +494,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		"builds", "list",
 		"--ongoing",
 		"--region", deployerConfigForFunction.Provider.Region,
-		"--filter", deployerConfigForFunction.Handler,
+		"--filter", deployerConfigForFunction.DeploymentName,
 		"--sort-by", "~created",
 		"--limit", "1",
 		"--format=value(ID)",
