@@ -3,7 +3,7 @@ package constants
 var (
 	MAX_DEPLOYMENTS_IN_PARALLEL int = 15
 
-	POLLING_TIMEOUT int = 300 // 5 minutes (5 * 60 = 300 seconds)
+	POLLING_TIMEOUT int = 900 // 15 minutes (15 * 60 = 900 seconds)
 
 	// List of gcloud build statuses
 	GCLOUD_BUILD_STATUS_SUCCESS string = "SUCCESS"

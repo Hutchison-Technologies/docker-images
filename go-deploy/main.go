@@ -479,6 +479,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	buildID := parts[len(parts)-1]
 
+	// Log build ID
+	utils.Logger(fmt.Sprintf("TRACE: Initiated (Function: %s) (buildID: %s) (isDelete: %t)\n", deployerConfigForFunction.Handler, buildID, deployerConfigForFunction.IsDelete), verbose)
+
 	// Fomart cmd for polling
 	pollingCmd := []string{
 		"builds",
@@ -491,7 +494,8 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	// Poll every 5 seconds for the build
 	for {
-		if time.Since(pollingStartTime).Seconds() > time.Duration(constants.POLLING_TIMEOUT).Seconds() {
+		// Return if timeout is more than 15 minutes
+		if time.Since(pollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
 			// Format error
 			errMessage := fmt.Sprintf("ERR: Timeout (Function: %s) (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
 			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
