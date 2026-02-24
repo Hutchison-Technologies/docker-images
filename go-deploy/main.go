@@ -7,6 +7,7 @@ import (
 	"hutchisont/go-deployer/cmd"
 	"hutchisont/go-deployer/constants"
 	"hutchisont/go-deployer/models"
+	"hutchisont/go-deployer/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-set/v2"
 	yaml "gopkg.in/yaml.v3"
@@ -24,67 +26,67 @@ import (
 func main() {
 	// Parse CMD flags
 	cmd := cmd.ParseCMD()
-	fmt.Printf("CMD: %+v\n", cmd)
+	utils.Logger(fmt.Sprintf("CMD: %+v\n", cmd), true)
 
-	fmt.Printf("TRACE: Looping through the repo...\n")
+	utils.Logger("TRACE: Looping through the repo...\n", cmd.Verbose)
 
 	// Loop through all the folders in the repo and get the deployer config file.
 	listOfDirs, err := os.ReadDir("./")
 	if err != nil {
-		fmt.Printf("%s - %s\n", constants.UnableToReadRepoError, err.Error())
+		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToReadRepoError, err.Error()), true)
 		panic(constants.UnableToReadRepoError)
 	}
 
 	// Get provider config
 	providerConfigBytes, err := os.ReadFile("provider_config.yml")
 	if err != nil {
-		fmt.Printf("%s - %s\n", constants.UnableToReadProviderConfigError, err.Error())
+		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToReadProviderConfigError, err.Error()), true)
 		panic(constants.UnableToReadProviderConfigError)
 	}
 
-	fmt.Println("TRACE: Parsing provider config...")
+	utils.Logger("TRACE: Parsing provider config...", cmd.Verbose)
 
 	// Unmarshal the provider config
 	providerConfig := models.Provider{}
 	err = yaml.Unmarshal(providerConfigBytes, &providerConfig)
 	if err != nil {
-		fmt.Printf("%s - %s\n", constants.UnableToUnmarshalProviderConfigError, err.Error())
+		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToUnmarshalProviderConfigError, err.Error()), true)
 		panic(constants.UnableToUnmarshalProviderConfigError)
 	}
 
-	fmt.Println("TRACE: Parsed provider config successfully...")
+	utils.Logger("TRACE: Parsed provider config successfully...", cmd.Verbose)
 
 	// Open diff file with git changes
 	fmt.Printf("TRACE: Reading git diff...\n")
 	diffOut, err := os.ReadFile("changes.diff")
 	if err != nil {
-		fmt.Printf("%s - %s\n", constants.UnableToReadGitDiffError, err.Error())
+		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToReadGitDiffError, err.Error()), true)
 		panic(constants.UnableToReadGitDiffError)
 	}
 
 	// Parse the git diff output and get a list of functions to deploy
-	listOfFunctionsToDeploy, listOfFunctionsToDelete, listOfFoldersToDeploy := parseDiffFunctions(diffOut)
+	listOfFunctionsToDeploy, listOfFunctionsToDelete, listOfFoldersToDeploy := parseDiffFunctions(diffOut, cmd.Verbose)
 
 	// Get the deployer config for the repo
-	deployerConfigsForTheRepo, err := getDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig)
+	deployerConfigsForTheRepo, err := getDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd.Verbose)
 	if err != nil {
-		fmt.Printf("%s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error())
+		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error()), true)
 		panic(constants.UnableToGetDeployerConfigsForTheRepoError)
 	}
 
-	fmt.Printf("TRACE: %d functions to process...\n", len(deployerConfigsForTheRepo))
+	utils.Logger(fmt.Sprintf("TRACE: %d functions to process...\n", len(deployerConfigsForTheRepo)), true)
 
 	credentialsPath := providerConfig.Credentials
 	if credentialsPath == "" {
-		fmt.Println(constants.NoCredentialsPathProvidedInProviderConfigError)
+		utils.Logger(fmt.Sprintln(constants.NoCredentialsPathProvidedInProviderConfigError), true)
 		panic(constants.NoCredentialsPathProvidedInProviderConfigError)
 	}
 
-	fmt.Println("TRACE: Formatting inputs for deployment...")
+	utils.Logger("TRACE: Formatting inputs for deployment...", cmd.Verbose)
 
 	errorChannel := make(chan models.DeploymentError, len(deployerConfigsForTheRepo))
 
-	fmt.Printf("TRACE: Starting batch deployment of %d in parallel...\n", cmd.MaxDeploymentsInParallel)
+	utils.Logger(fmt.Sprintf("TRACE: Starting batch deployment of %d in parallel...\n", cmd.MaxDeploymentsInParallel), true)
 
 	batchSize := cmd.MaxDeploymentsInParallel
 	var currentBatch []models.DeployerConfig
@@ -96,9 +98,9 @@ func main() {
 
 		if batchCounter == batchSize {
 			// Process the batch
-			processDeploymentBatch(currentBatch, errorChannel)
+			processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose)
 
-			fmt.Printf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo))
+			utils.Logger(fmt.Sprintf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo)), true)
 
 			// Reset batch
 			currentBatch = nil
@@ -108,48 +110,50 @@ func main() {
 
 	// Process the last batch
 	if batchCounter > 0 {
-		processDeploymentBatch(currentBatch, errorChannel)
+		processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose)
 	}
 
-	fmt.Printf("TRACE: Closing error channel...\n")
+	utils.Logger("TRACE: Closing error channel...\n", cmd.Verbose)
 	close(errorChannel)
 
 	if len(errorChannel) == 0 {
-		fmt.Println("TRACE: Deployment successfully completed.")
+		utils.Logger("TRACE: Deployment successfully completed.", true)
 		return
 	}
 
-	fmt.Println("ERR: Deployment failed with the following errors:")
+	utils.Logger("---------------------------------------------------------", cmd.Verbose)
+	utils.Logger("Deployment failed with the following errors:", cmd.Verbose)
 
 	failedFunctions := map[string][]string{}
 
 	// Check for errors
 	for err := range errorChannel {
 		failedFunctions[err.DirectoryName] = append(failedFunctions[err.DirectoryName], err.DeploymentName)
-		fmt.Println("---------------------------------------------------------")
-		fmt.Printf("%+v\n", err)
-		fmt.Println("---------------------------------------------------------")
+		utils.Logger("---------------------------------------------------------", cmd.Verbose)
+		utils.Logger(fmt.Sprintf("%+v\n", err), cmd.Verbose)
+		utils.Logger("---------------------------------------------------------", cmd.Verbose)
 	}
 
 	// Log all the functions that failed
-	fmt.Println("---------------------------------------------------------")
-	fmt.Println("Functions that failed:")
+	utils.Logger("---------------------------------------------------------", true)
+	utils.Logger("The following Functions failed to deploy:", true)
 	for directory, deployments := range failedFunctions {
-		fmt.Println("---------------------------------------------------------")
-		fmt.Printf("Directory: %s\n", directory)
+		utils.Logger("---------------------------------------------------------", true)
+		utils.Logger(fmt.Sprintf("Directory: %s\n", directory), true)
 
 		for _, deploymentName := range deployments {
-			fmt.Printf("  - %s\n", deploymentName)
+			utils.Logger(fmt.Sprintf("  - %s\n", deploymentName), true)
 		}
 
-		fmt.Println("---------------------------------------------------------")
+		utils.Logger("---------------------------------------------------------", true)
 	}
-	fmt.Println("---------------------------------------------------------")
+
+	utils.Logger("---------------------------------------------------------", true)
 
 	panic(constants.DeploymentFailedError)
 }
 
-func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
+func parseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string) {
 	functionsToBeAdded := set.From([]string{})
 	functionsToBeDeleted := set.From([]string{})
 	foldersToDeploy := set.From([]string{})
@@ -221,14 +225,14 @@ func parseDiffFunctions(diff []byte) ([]string, []string, []string) {
 		}
 	}
 
-	fmt.Printf("TRACE: Found %d function(s) updated: %+v\n", functionsToBeAdded.Size(), functionsToBeAdded)
-	fmt.Printf("TRACE: Found %d function(s) removed: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted)
-	fmt.Printf("TRACE: Folder(s) to deploy as the go.mod/go.sum files were updated: %+v\n", foldersToDeploy)
+	utils.Logger(fmt.Sprintf("TRACE: Found %d function(s) updated: %+v\n", functionsToBeAdded.Size(), functionsToBeAdded), verbose)
+	utils.Logger(fmt.Sprintf("TRACE: Found %d function(s) removed: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted), verbose)
+	utils.Logger(fmt.Sprintf("TRACE: Folder(s) to deploy as the go.mod/go.sum files were updated: %+v\n", foldersToDeploy), verbose)
 
 	return functionsToBeAdded.Slice(), functionsToBeDeleted.Slice(), foldersToDeploy.Slice()
 }
 
-func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider) ([]models.DeployerConfig, error) {
+func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider, verbose bool) ([]models.DeployerConfig, error) {
 	deployerConfigsForTheRepo := []models.DeployerConfig{}
 
 	for _, dir := range listOfDirs {
@@ -236,36 +240,36 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 
 		// Ignore hidden directories
 		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") {
-			fmt.Printf("TRACE: Skipping directory - %s\n", dirName)
+			utils.Logger(fmt.Sprintf("TRACE: Skipping directory - %s\n", dirName), true)
 			continue
 		}
 
-		fmt.Printf("TRACE: Found directory - %s\n", dirName)
+		utils.Logger(fmt.Sprintf("TRACE: Found directory - %s\n", dirName), verbose)
 
-		fmt.Printf("TRACE: Running go mod tidy...\n")
+		utils.Logger("TRACE: Running go mod tidy...\n", verbose)
 		// Run go mod tidy inside the dir
 		cmdStruct := exec.Command("go", "mod", "tidy")
 		cmdStruct.Dir = dirName
 		out, err := cmdStruct.CombinedOutput()
 		if err != nil {
-			fmt.Printf("ERR: Unable to process %s - %s\n", dirName, string(out))
+			utils.Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
 			return nil, err
 		}
 
-		fmt.Printf("TRACE: Running go mod vendor...\n")
+		utils.Logger("TRACE: Running go mod vendor...\n", verbose)
 		// Run go mod vendor inside the dir
 		cmdStruct = exec.Command("go", "mod", "vendor")
 		cmdStruct.Dir = dirName
 		out, err = cmdStruct.CombinedOutput()
 		if err != nil {
-			fmt.Printf("ERR: Unable to process %s - %s\n", dirName, string(out))
+			utils.Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
 			return nil, err
 		}
 
 		// For each dir, cd into it and get the deployer config file
 		configFile, err := os.ReadFile(dirName + "/deployer_config.yml")
 		if err != nil {
-			fmt.Printf("ERR: Unable to read deployer config file - %s\n", err.Error())
+			utils.Logger(fmt.Sprintf("ERR: Unable to read deployer config file - %s\n", err.Error()), true)
 			return nil, err
 		}
 
@@ -273,7 +277,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		functionsConfig := map[string]models.Function{}
 		err = yaml.Unmarshal(configFile, &functionsConfig)
 		if err != nil {
-			fmt.Printf("ERR: Unable to unmarshal functions config file - %s\n", err.Error())
+			utils.Logger(fmt.Sprintf("ERR: Unable to unmarshal functions config file - %s\n", err.Error()), true)
 			return nil, err
 		}
 
@@ -318,25 +322,31 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	return deployerConfigsForTheRepo, nil
 }
 
-func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError) {
+func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool) {
 	var wg sync.WaitGroup
 	wg.Add(len(deploymentBatch))
 
 	for _, deployConfig := range deploymentBatch {
-		go deployFunction(deployConfig, &wg, errorChannel)
+		go deployFunction(deployConfig, &wg, errorChannel, verbose)
 	}
 
 	wg.Wait()
+
+	// Sleep between batches
+	time.Sleep(time.Duration(delayBetweenBatches) * time.Second)
 }
 
-func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError) {
+func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool) {
 	defer wg.Done()
 
 	// Create isolated gcloud config directory
 	tempDir, err := os.MkdirTemp("", "gcloud-*")
 	if err != nil {
+		errMessage := fmt.Sprintf("ERR: Unable to create temp gcloud dir: %s", err.Error())
+		utils.Logger(errMessage, true)
+
 		errorChannel <- models.DeploymentError{
-			ErrorMessage:   fmt.Sprintf("ERR: Unable to create temp gcloud dir: %s", err.Error()),
+			ErrorMessage:   errMessage,
 			DeploymentName: deployerConfigForFunction.DeploymentName,
 			DirectoryName:  deployerConfigForFunction.DirectoryName,
 			Handler:        deployerConfigForFunction.Handler,
@@ -348,8 +358,11 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	defer func(errorChannel chan models.DeploymentError) {
 		err := os.RemoveAll(tempDir)
 		if err != nil {
+			errMessage := fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error())
+			utils.Logger(errMessage, true)
+
 			errorChannel <- models.DeploymentError{
-				ErrorMessage:   fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error()),
+				ErrorMessage:   errMessage,
 				DeploymentName: deployerConfigForFunction.DeploymentName,
 				DirectoryName:  deployerConfigForFunction.DirectoryName,
 				Handler:        deployerConfigForFunction.Handler,
@@ -362,7 +375,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	cmdStruct := exec.Cmd{}
 
 	if deployerConfigForFunction.IsDelete {
-		fmt.Printf("TRACE: Deleting %s...\n", deployerConfigForFunction.Handler)
+		utils.Logger(fmt.Sprintf("TRACE: Deleting %s...\n", deployerConfigForFunction.Handler), true)
 
 		// Format cmd args
 		cmdArgs := []string{
@@ -377,13 +390,13 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		}
 
 		// Log CMD args
-		fmt.Printf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " "))
-		
+		utils.Logger(fmt.Sprintf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " ")), verbose)
+
 		// Execute the command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 
 	} else {
-		fmt.Printf("TRACE: Deploying %s...\n", deployerConfigForFunction.Handler)
+		utils.Logger(fmt.Sprintf("TRACE: Deploying %s...\n", deployerConfigForFunction.Handler), true)
 
 		// Merge global and local env vars
 		mergedEnv := map[string]string{}
@@ -437,7 +450,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		}
 
 		// Log CMD args
-		fmt.Printf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " "))
+		utils.Logger(fmt.Sprintf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " ")), verbose)
 
 		// Execute the command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
@@ -452,7 +465,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	if err != nil {
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to process (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out), err.Error())
-		fmt.Println(errMessage)
+		utils.Logger(errMessage, true)
 
 		// Format error
 		deploymentError := models.DeploymentError{
@@ -468,5 +481,5 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	}
 
 	// Return success
-	fmt.Printf("TRACE: (Function: %s) processed (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out))
+	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processed (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(out)), true)
 }
