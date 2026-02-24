@@ -360,6 +360,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	cmdStruct := exec.Cmd{}
 	pollingCmdStruct := exec.Cmd{}
+	buildCmdStruct := exec.Cmd{}
 
 	if deployerConfigForFunction.IsDelete {
 		utils.Logger(fmt.Sprintf("TRACE: Deleting %s...\n", deployerConfigForFunction.Handler), true)
@@ -462,7 +463,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	if deployerConfigForFunction.IsDelete {
 		handlePollingForDeletion(deployerConfigForFunction, pollingCmdStruct, errorChannel, tempDir, verbose)
 	} else {
-		handlePollingForDeployment(deployerConfigForFunction, pollingCmdStruct, errorChannel, tempDir, verbose)
+		handlePollingForDeployment(deployerConfigForFunction, pollingCmdStruct, buildCmdStruct, errorChannel, tempDir, verbose)
 	}
 
 	// Return success
@@ -485,7 +486,7 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 	errorChannel <- deploymentError
 }
 
-func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, pollingCmdStruct exec.Cmd, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, pollingCmdStruct exec.Cmd, buildCmdStruct exec.Cmd, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
 	// Format get build args
 	getBuildArgs := []string{
 		"builds", "list",
@@ -500,7 +501,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 	// Log CMD args
 	utils.Logger(fmt.Sprintf("TRACE: Executing get builds list command - %s\n", strings.Join(getBuildArgs, " ")), verbose)
 
-	buildCmd := exec.Command("gcloud", getBuildArgs...)
+	buildCmdStruct = *exec.Command("gcloud", getBuildArgs...)
 
 	buildID := ""
 
@@ -517,10 +518,15 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 			return
 		}
 
+		buildCmdStruct.Env = append(os.Environ(),
+			"CLOUDSDK_CONFIG="+tempDir,
+			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
+		)
+
 		// Execute the command
-		buildOut, err := buildCmd.CombinedOutput()
+		buildOut, err := buildCmdStruct.CombinedOutput()
 		if err != nil {
-			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s", string(buildOut), err)
+			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s\n", string(buildOut), err)
 			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
 
 			return
