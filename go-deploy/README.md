@@ -27,11 +27,11 @@ EG `v1.0.0`
 Commands:
 
 ```bash
-docker build -t hutchisont/go-deploy:go125_v1.0.4 .
+docker build -t hutchisont/go-deploy:go125_v1.0.5 .
 ```
 
 Once tagged, push to dockerhub via:
 
 ```bash
-docker push hutchisont/go-deploy:go125_v1.0.4
+docker push hutchisont/go-deploy:go125_v1.0.5
 ```
