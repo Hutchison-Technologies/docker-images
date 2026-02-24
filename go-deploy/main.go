@@ -458,9 +458,6 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		return
 	}
 
-	// Wait for 20 seconds to get the build ID before polling
-	time.Sleep(20 * time.Second)
-
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
 		handlePollingForDeletion(deployerConfigForFunction, pollingCmdStruct, errorChannel, tempDir, verbose)
@@ -505,22 +502,45 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 	buildCmd := exec.Command("gcloud", getBuildArgs...)
 
-	// Execute the command
-	buildOut, err := buildCmd.CombinedOutput()
-	if err != nil {
-		errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build list: %s - %s", string(buildOut), err)
-		pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+	buildID := ""
 
-		return
+	cloudBuildPollingStartTime := time.Now().UTC()
+
+	// Poll every 5 seconds for the build ID
+	for {
+		// Return if timeout is more than 15 minutes
+		if time.Since(cloudBuildPollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
+			// Format error
+			errMessage := fmt.Sprintf("ERR: Timeout (Function: %s) (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
+			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+
+			return
+		}
+
+		// Execute the command
+		buildOut, err := buildCmd.CombinedOutput()
+		if err != nil {
+			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s", string(buildOut), err)
+			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+
+			return
+		}
+
+		// Parse build ID
+		buildID = strings.TrimSpace(string(buildOut))
+
+		if buildID != "" {
+			// Log build ID
+			utils.Logger(fmt.Sprintf("TRACE: Initiated (buildID: %s) (Function: %s) (isDelete: %t)\n", buildID, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
+			break
+		}
+
+		time.Sleep(5 * time.Second)
+		// Log build ID
+		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", buildID, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
 	}
 
-	// Parse build ID
-	buildID := strings.TrimSpace(string(buildOut))
-
-	// Log build ID
-	utils.Logger(fmt.Sprintf("TRACE: Initiated (buildID: %s) (Function: %s) (isDelete: %t)\n", buildID, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
-
-	// Fomart cmd for polling
+	// Fomart cmd for status polling
 	pollingCmd := []string{
 		"builds",
 		"describe",
@@ -531,7 +551,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 	pollingStartTime := time.Now().UTC()
 
-	// Poll every 5 seconds for the build
+	// Poll every 5 seconds for the build status
 	for {
 		// Return if timeout is more than 15 minutes
 		if time.Since(pollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
