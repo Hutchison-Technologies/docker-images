@@ -537,7 +537,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 		time.Sleep(5 * time.Second)
 		// Log build ID
-		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", buildID, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
+		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
 	}
 
 	// Fomart cmd for status polling
