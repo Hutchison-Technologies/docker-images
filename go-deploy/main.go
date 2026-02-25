@@ -24,6 +24,9 @@ import (
 // NOTE: The service account need to have `roles/serviceusage.serviceUsageConsumer` set
 
 func main() {
+	// Format deployment start time
+	deploymentStartTime := time.Now().UTC()
+
 	// Parse CMD flags
 	cmd := cmd.ParseCMD()
 	utils.Logger(fmt.Sprintf("CMD: %+v\n", cmd), true)
@@ -98,7 +101,7 @@ func main() {
 
 		if batchCounter == batchSize {
 			// Process the batch
-			processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose)
+			processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
 
 			utils.Logger(fmt.Sprintf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo)), true)
 
@@ -110,7 +113,7 @@ func main() {
 
 	// Process the last batch
 	if batchCounter > 0 {
-		processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose)
+		processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
 	}
 
 	utils.Logger("TRACE: Closing error channel...\n", cmd.Verbose)
@@ -322,12 +325,12 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	return deployerConfigsForTheRepo, nil
 }
 
-func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool) {
+func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool, deploymentStartTime time.Time) {
 	var wg sync.WaitGroup
 	wg.Add(len(deploymentBatch))
 
 	for _, deployConfig := range deploymentBatch {
-		go deployFunction(deployConfig, &wg, errorChannel, verbose)
+		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime)
 	}
 
 	wg.Wait()
@@ -336,7 +339,7 @@ func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChanne
 	time.Sleep(time.Duration(delayBetweenBatches) * time.Second)
 }
 
-func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool) {
+func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time) {
 	defer wg.Done()
 
 	// Create isolated gcloud config directory
@@ -461,7 +464,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	if deployerConfigForFunction.IsDelete {
 		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose)
 	} else {
-		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose)
+		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime)
 	}
 }
 
@@ -481,16 +484,20 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 	errorChannel <- deploymentError
 }
 
-func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time) {
+	// Format filter
+	filter := fmt.Sprintf(`createTime>="%s" AND %s`, deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
+
 	// Format get build args
 	getBuildArgs := []string{
 		"builds", "list",
 		"--region", deployerConfigForFunction.Provider.Region,
 		"--project", deployerConfigForFunction.Provider.Project,
-		"--filter", deployerConfigForFunction.DeploymentName,
-		"--sort-by", "~created",
+		"--filter", filter,
+		"--sort-by", "~createTime",
 		"--limit", "1",
 		"--format=value(ID)",
+		"--verbosity", "error",
 	}
 
 	// Log CMD args
@@ -537,10 +544,9 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 			break
 		}
 
-		time.Sleep(5 * time.Second)
-
-		// Log build ID
+		// Sleep for 5 seconds
 		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
+		time.Sleep(5 * time.Second)
 	}
 
 	// Fomart cmd for status polling
@@ -584,14 +590,15 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 		status := strings.TrimSpace(string(statusBytes))
 
-		if strings.Contains(constants.GCLOUD_BUILD_STATUS_SUCCESS, status) {
+		if status == constants.GCLOUD_BUILD_STATUS_SUCCESS {
 			successMessage := fmt.Sprintf("TRACE: Status: %s (Function: %s) (isDelete: %t)\n", constants.GCLOUD_BUILD_STATUS_SUCCESS, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
 			utils.Logger(successMessage, verbose)
+
 			break
 		}
 
 		if slices.Contains(constants.GCLOUD_BUILD_FAILED_STATUSES, status) {
-			errMessage := fmt.Sprintf("ERR: Unable to process (Function: %s) (isDelete: %t) (buildID: %s): - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, buildID, string(err.Error()))
+			errMessage := fmt.Sprintf("ERR: Build failed (Function: %s) (isDelete: %t) (buildID: %s): - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, buildID, status)
 			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
 
 			return
