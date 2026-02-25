@@ -359,8 +359,6 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	}(errorChannel)
 
 	cmdStruct := exec.Cmd{}
-	pollingCmdStruct := exec.Cmd{}
-	buildCmdStruct := exec.Cmd{}
 
 	if deployerConfigForFunction.IsDelete {
 		utils.Logger(fmt.Sprintf("TRACE: Deleting %s...\n", deployerConfigForFunction.Handler), true)
@@ -380,7 +378,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		// Log CMD args
 		utils.Logger(fmt.Sprintf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " ")), verbose)
 
-		// Execute the command
+		// Format the delete command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 
 	} else {
@@ -440,7 +438,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		// Log CMD args
 		utils.Logger(fmt.Sprintf("TRACE: Executing command - %s\n", strings.Join(cmdArgs, " ")), verbose)
 
-		// Execute the command
+		// Format the deploy command
 		cmdStruct = *exec.Command("gcloud", cmdArgs...)
 	}
 
@@ -461,13 +459,10 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
-		handlePollingForDeletion(deployerConfigForFunction, pollingCmdStruct, errorChannel, tempDir, verbose)
+		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose)
 	} else {
-		handlePollingForDeployment(deployerConfigForFunction, pollingCmdStruct, buildCmdStruct, errorChannel, tempDir, verbose)
+		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose)
 	}
-
-	// Return success
-	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processed (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), true)
 }
 
 func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, deploymentName string, directoryName string, handler string) {
@@ -486,7 +481,7 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 	errorChannel <- deploymentError
 }
 
-func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, pollingCmdStruct exec.Cmd, buildCmdStruct exec.Cmd, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
 	// Format get build args
 	getBuildArgs := []string{
 		"builds", "list",
@@ -500,8 +495,6 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 	// Log CMD args
 	utils.Logger(fmt.Sprintf("TRACE: Executing get builds list command - %s\n", strings.Join(getBuildArgs, " ")), verbose)
-
-	buildCmdStruct = *exec.Command("gcloud", getBuildArgs...)
 
 	buildID := ""
 
@@ -518,12 +511,15 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 			return
 		}
 
+		// Format the build polling command
+		buildCmdStruct := exec.Command("gcloud", getBuildArgs...)
+
 		buildCmdStruct.Env = append(os.Environ(),
 			"CLOUDSDK_CONFIG="+tempDir,
 			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
 		)
 
-		// Execute the command
+		// Execute the build polling
 		buildOut, err := buildCmdStruct.CombinedOutput()
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s\n", string(buildOut), err)
@@ -542,6 +538,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		}
 
 		time.Sleep(5 * time.Second)
+
 		// Log build ID
 		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
 	}
@@ -568,14 +565,15 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 			return
 		}
 
-		// Execute the polling command
-		pollingCmdStruct = *exec.Command("gcloud", pollingCmd...)
+		// Format the polling command
+		pollingCmdStruct := exec.Command("gcloud", pollingCmd...)
 
 		pollingCmdStruct.Env = append(os.Environ(),
 			"CLOUDSDK_CONFIG="+tempDir,
 			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
 		)
 
+		// Execute the polling
 		statusBytes, err := pollingCmdStruct.CombinedOutput()
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Unable to poll cloud build (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(statusBytes), err.Error())
@@ -603,9 +601,12 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 		time.Sleep(5 * time.Second)
 	}
+
+	// Return success
+	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processed (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), true)
 }
 
-func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, pollingCmdStruct exec.Cmd, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
 	// Fomart cmd for polling
 	pollingCmd := []string{
 		"run", "services",
@@ -627,14 +628,15 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, p
 			return
 		}
 
-		// Execute the polling command
-		pollingCmdStruct = *exec.Command("gcloud", pollingCmd...)
+		// Format the polling command
+		pollingCmdStruct := exec.Command("gcloud", pollingCmd...)
 
 		pollingCmdStruct.Env = append(os.Environ(),
 			"CLOUDSDK_CONFIG="+tempDir,
 			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
 		)
 
+		// Execute the polling
 		statusBytes, err := pollingCmdStruct.CombinedOutput()
 		if err != nil {
 			status := strings.TrimSpace(string(statusBytes))
@@ -655,4 +657,7 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, p
 
 		time.Sleep(5 * time.Second)
 	}
+
+	// Return success
+	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) deleted (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), true)
 }
