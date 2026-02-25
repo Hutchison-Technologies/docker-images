@@ -331,6 +331,9 @@ func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChanne
 
 	for _, deployConfig := range deploymentBatch {
 		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime)
+
+		// Sleep between functions
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	wg.Wait()
