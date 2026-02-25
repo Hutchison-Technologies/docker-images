@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"hutchisont/go-deployer/cmd"
 	"hutchisont/go-deployer/constants"
@@ -101,7 +102,11 @@ func main() {
 
 		if batchCounter == batchSize {
 			// Process the batch
-			processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+			err := processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+			if err != nil {
+				utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToProcessDeploymentBatchError, err.Error()), true)
+				panic(constants.UnableToProcessDeploymentBatchError)
+			}
 
 			utils.Logger(fmt.Sprintf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo)), true)
 
@@ -113,7 +118,11 @@ func main() {
 
 	// Process the last batch
 	if batchCounter > 0 {
-		processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+		err = processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+		if err != nil {
+			utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToProcessDeploymentBatchError, err.Error()), true)
+			panic(constants.UnableToProcessDeploymentBatchError)
+		}
 	}
 
 	utils.Logger("TRACE: Closing error channel...\n", cmd.Verbose)
@@ -325,44 +334,44 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	return deployerConfigsForTheRepo, nil
 }
 
-func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool, deploymentStartTime time.Time) {
-	var wg sync.WaitGroup
-	wg.Add(len(deploymentBatch))
-
-	for _, deployConfig := range deploymentBatch {
-		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime)
-
-		// Sleep between functions
-		time.Sleep(300 * time.Millisecond)
-	}
-
-	wg.Wait()
-
-	// Sleep between batches
-	time.Sleep(time.Duration(delayBetweenBatches) * time.Second)
-}
-
-func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time) {
-	defer wg.Done()
-
+func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool, deploymentStartTime time.Time) error {
 	// Create isolated gcloud config directory
 	tempDir, err := os.MkdirTemp("", "gcloud-*")
 	if err != nil {
 		errMessage := fmt.Sprintf("ERR: Unable to create temp gcloud dir: %s", err.Error())
-		pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+		utils.Logger(errMessage, true)
 
-		return
+		return errors.New(errMessage)
 	}
 
 	defer func(errorChannel chan models.DeploymentError) {
 		err := os.RemoveAll(tempDir)
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error())
-			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+			utils.Logger(errMessage, true)
 
 			return
 		}
 	}(errorChannel)
+
+	var wg sync.WaitGroup
+	wg.Add(len(deploymentBatch))
+
+	for _, deployConfig := range deploymentBatch {
+		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime, tempDir)
+	}
+
+	wg.Wait()
+
+	// Sleep between batches
+	time.Sleep(time.Duration(delayBetweenBatches) * time.Second)
+
+	// Return success
+	return nil
+}
+
+func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time, tempDir string) {
+	defer wg.Done()
 
 	cmdStruct := exec.Cmd{}
 
@@ -454,7 +463,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	)
 
 	// Run the gcloud run deploy command
-	err = cmdStruct.Start()
+	err := cmdStruct.Start()
 	if err != nil {
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
@@ -465,9 +474,17 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
-		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose)
+		handlePollingForDeletion(deployerConfigForFunction, errorChannel, cmdStruct.Env, verbose)
 	} else {
-		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime)
+		handlePollingForDeployment(deployerConfigForFunction, errorChannel, cmdStruct.Env, verbose, deploymentStartTime)
+	}
+
+	err = cmdStruct.Wait()
+	if err != nil {
+		errMessage := fmt.Sprintf("ERR: Unable to release deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
+		pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+
+		return
 	}
 }
 
@@ -487,7 +504,7 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 	errorChannel <- deploymentError
 }
 
-func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time) {
+func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, cmdEnv []string, verbose bool, deploymentStartTime time.Time) {
 	// Format filter
 	filter := fmt.Sprintf("createTime>=%s AND tags=service_%s", deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
 
@@ -524,10 +541,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		// Format the build polling command
 		buildCmdStruct := exec.Command("gcloud", getBuildArgs...)
 
-		buildCmdStruct.Env = append(os.Environ(),
-			"CLOUDSDK_CONFIG="+tempDir,
-			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
-		)
+		buildCmdStruct.Env = cmdEnv
 
 		// Execute the build polling
 		buildOut, err := buildCmdStruct.CombinedOutput()
@@ -578,10 +592,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		// Format the polling command
 		pollingCmdStruct := exec.Command("gcloud", pollingCmd...)
 
-		pollingCmdStruct.Env = append(os.Environ(),
-			"CLOUDSDK_CONFIG="+tempDir,
-			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
-		)
+		pollingCmdStruct.Env = cmdEnv
 
 		// Execute the polling
 		statusBytes, err := pollingCmdStruct.CombinedOutput()
@@ -617,7 +628,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processed (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), true)
 }
 
-func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, cmdEnv []string, verbose bool) {
 	// Fomart cmd for polling
 	pollingCmd := []string{
 		"run", "services",
@@ -642,10 +653,7 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, e
 		// Format the polling command
 		pollingCmdStruct := exec.Command("gcloud", pollingCmd...)
 
-		pollingCmdStruct.Env = append(os.Environ(),
-			"CLOUDSDK_CONFIG="+tempDir,
-			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
-		)
+		pollingCmdStruct.Env = cmdEnv
 
 		// Execute the polling
 		statusBytes, err := pollingCmdStruct.CombinedOutput()
