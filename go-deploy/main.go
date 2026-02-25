@@ -101,7 +101,7 @@ func main() {
 
 		if batchCounter == batchSize {
 			// Process the batch
-			processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+			processDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime)
 
 			utils.Logger(fmt.Sprintf("TRACE: Processed %d out of %d functions...\n", i+1, len(deployerConfigsForTheRepo)), true)
 
@@ -113,7 +113,7 @@ func main() {
 
 	// Process the last batch
 	if batchCounter > 0 {
-		processDeploymentBatch(currentBatch, errorChannel, cmd.DelayBetweenBatches, cmd.Verbose, deploymentStartTime)
+		processDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime)
 	}
 
 	utils.Logger("TRACE: Closing error channel...\n", cmd.Verbose)
@@ -253,7 +253,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		// Run go mod tidy inside the dir
 		cmdStruct := exec.Command("go", "mod", "tidy")
 		cmdStruct.Dir = dirName
-		out, err := cmdStruct.CombinedOutput()
+		out, err := cmdStruct.Output()
 		if err != nil {
 			utils.Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
 			return nil, err
@@ -263,7 +263,7 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		// Run go mod vendor inside the dir
 		cmdStruct = exec.Command("go", "mod", "vendor")
 		cmdStruct.Dir = dirName
-		out, err = cmdStruct.CombinedOutput()
+		out, err = cmdStruct.Output()
 		if err != nil {
 			utils.Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
 			return nil, err
@@ -325,24 +325,21 @@ func getDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 	return deployerConfigsForTheRepo, nil
 }
 
-func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, delayBetweenBatches int, verbose bool, deploymentStartTime time.Time) {
+func processDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, pollingDelay int, delayBetweenFunctionsMs int, verbose bool, deploymentStartTime time.Time) {
 	var wg sync.WaitGroup
 	wg.Add(len(deploymentBatch))
 
 	for _, deployConfig := range deploymentBatch {
-		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime)
+		go deployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime, pollingDelay)
 
 		// Sleep between functions
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(time.Duration(delayBetweenFunctionsMs) * time.Millisecond)
 	}
 
 	wg.Wait()
-
-	// Sleep between batches
-	time.Sleep(time.Duration(delayBetweenBatches) * time.Second)
 }
 
-func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time) {
+func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
 	defer wg.Done()
 
 	// Create isolated gcloud config directory
@@ -355,6 +352,8 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	}
 
 	defer func(errorChannel chan models.DeploymentError) {
+		utils.Logger("TRACE: Removing temp gcloud dir...\n", verbose)
+
 		err := os.RemoveAll(tempDir)
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error())
@@ -465,9 +464,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
-		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose)
+		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose, pollingDelay)
 	} else {
-		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime)
+		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime, pollingDelay)
 	}
 
 	err = cmdStruct.Wait()
@@ -495,7 +494,7 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 	errorChannel <- deploymentError
 }
 
-func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time) {
+func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
 	// Format filter
 	filter := fmt.Sprintf("createTime>=%s AND tags=service_%s", deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
 
@@ -518,7 +517,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 	cloudBuildPollingStartTime := time.Now().UTC()
 
-	// Poll every 5 seconds for the build ID
+	// Manually Poll for the build ID
 	for {
 		// Return if timeout is more than 15 minutes
 		if time.Since(cloudBuildPollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
@@ -538,7 +537,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		)
 
 		// Execute the build polling
-		buildOut, err := buildCmdStruct.CombinedOutput()
+		buildOut, err := buildCmdStruct.Output()
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s\n", string(buildOut), err)
 			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
@@ -555,9 +554,8 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 			break
 		}
 
-		// Sleep for 5 seconds
 		utils.Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(pollingDelay) * time.Second)
 	}
 
 	// Fomart cmd for status polling
@@ -572,7 +570,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 	pollingStartTime := time.Now().UTC()
 
-	// Poll every 5 seconds for the build status
+	// Manually Poll for the build status
 	for {
 		// Return if timeout is more than 15 minutes
 		if time.Since(pollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
@@ -592,7 +590,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		)
 
 		// Execute the polling
-		statusBytes, err := pollingCmdStruct.CombinedOutput()
+		statusBytes, err := pollingCmdStruct.Output()
 		if err != nil {
 			errMessage := fmt.Sprintf("ERR: Unable to poll cloud build (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(statusBytes), err.Error())
 			pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
@@ -618,14 +616,14 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 
 		utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processing (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, status), verbose)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(pollingDelay) * time.Second)
 	}
 
 	// Return success
 	utils.Logger(fmt.Sprintf("TRACE: (Function: %s) processed (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), true)
 }
 
-func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool) {
+func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, pollingDelay int) {
 	// Fomart cmd for polling
 	pollingCmd := []string{
 		"run", "services",
@@ -636,7 +634,7 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, e
 
 	pollingStartTime := time.Now().UTC()
 
-	// Poll every 5 seconds for the build
+	// Manually Poll for the build
 	for {
 		// Return if timeout is more than 15 minutes
 		if time.Since(pollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
@@ -656,7 +654,7 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, e
 		)
 
 		// Execute the polling
-		statusBytes, err := pollingCmdStruct.CombinedOutput()
+		statusBytes, err := pollingCmdStruct.Output()
 		if err != nil {
 			status := strings.TrimSpace(string(statusBytes))
 
@@ -674,7 +672,7 @@ func handlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, e
 
 		utils.Logger(fmt.Sprintf("TRACE: (Function: %s) deleting (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(pollingDelay) * time.Second)
 	}
 
 	// Return success

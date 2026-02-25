@@ -5,5 +5,6 @@ type CMD struct {
 	// Props
 	MaxDeploymentsInParallel int  `json:"maxDeploymentsInParallel"`
 	Verbose                  bool `json:"verbose"`
-	DelayBetweenBatches      int  `json:"delayBetweenBatches"`
+	PollingDelay             int  `json:"pollingDelay"`
+	DelayBetweenFunctionsMs  int  `json:"delayBetweenFunctionsMs"`
 }

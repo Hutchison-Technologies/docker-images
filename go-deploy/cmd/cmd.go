@@ -16,7 +16,8 @@ func ParseCMD() models.CMD {
 	// Define CMD flags
 	maxDeploymentsInParallel := defineInt("maxDeploymentsInParallel", 5, "Maximum number of deployments to run in parallel")
 	verbose := defineBool("verbose", false, "Verbose output")
-	delayBetweenBatches := defineInt("delayBetweenBatches", 0, "Delay between batches")
+	pollingDelay := defineInt("pollingDelay", 15, "Delay between manual polling")
+	delayBetweenFunctionsMs := defineInt("delayBetweenFunctionsMs", 300, "Delay between functions in ms")
 
 	// Parse CMD flags
 	flag.Parse()
@@ -26,6 +27,7 @@ func ParseCMD() models.CMD {
 		// Props
 		MaxDeploymentsInParallel: *maxDeploymentsInParallel,
 		Verbose:                  *verbose,
-		DelayBetweenBatches:      *delayBetweenBatches,
+		PollingDelay:             *pollingDelay,
+		DelayBetweenFunctionsMs:  *delayBetweenFunctionsMs,
 	}
 }
