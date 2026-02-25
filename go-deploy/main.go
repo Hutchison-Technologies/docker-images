@@ -453,7 +453,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	)
 
 	// Run the gcloud run deploy command
-	err = cmdStruct.Start()
+	err = cmdStruct.Run()
 	if err != nil {
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
@@ -467,14 +467,6 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		handlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose, pollingDelay)
 	} else {
 		handlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime, pollingDelay)
-	}
-
-	err = cmdStruct.Wait()
-	if err != nil {
-		errMessage := fmt.Sprintf("ERR: Unable to release deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
-		pipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
-
-		return
 	}
 }
 
