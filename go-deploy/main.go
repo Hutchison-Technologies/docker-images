@@ -486,7 +486,7 @@ func pipeOutError(errorChannel chan models.DeploymentError, errMessage string, d
 
 func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time) {
 	// Format filter
-	filter := fmt.Sprintf(`createTime>="%s" AND %s`, deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
+	filter := fmt.Sprintf("createTime>=%s AND tags=service_%s", deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
 
 	// Format get build args
 	getBuildArgs := []string{
@@ -556,6 +556,7 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		buildID,
 		"--format=value(status)",
 		"--region", deployerConfigForFunction.Provider.Region,
+		"--project", deployerConfigForFunction.Provider.Project,
 	}
 
 	pollingStartTime := time.Now().UTC()
