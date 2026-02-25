@@ -485,7 +485,6 @@ func handlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 	// Format get build args
 	getBuildArgs := []string{
 		"builds", "list",
-		"--ongoing",
 		"--region", deployerConfigForFunction.Provider.Region,
 		"--project", deployerConfigForFunction.Provider.Project,
 		"--filter", deployerConfigForFunction.DeploymentName,
