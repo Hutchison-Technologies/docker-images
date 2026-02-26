@@ -125,18 +125,27 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
 	)
 
-	// Run the gcloud run deploy command
-	deployOutBytes, err := cmdStruct.Output()
+	// Trigger the gcloud run deploy command
+	err = cmdStruct.Start()
 	if err != nil {
 		// Format errMessage
-		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(deployOutBytes), err.Error())
+		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
 		PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
 
 		return
 	}
 
+	defer func() {
+		err = cmdStruct.Wait()
+		if err != nil {
+			// Format errMessage
+			errMessage := fmt.Sprintf("ERR: Unable to release deployment (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
+			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+		}
+	}()
+
 	// Log deploy output
-	Logger(fmt.Sprintf("TRACE: Triggered Deployment (Function: %s) - %s\n", deployerConfigForFunction.Handler, string(deployOutBytes)), verbose)
+	Logger(fmt.Sprintf("TRACE: Triggered Deployment (Function: %s)\n", deployerConfigForFunction.Handler), verbose)
 
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
