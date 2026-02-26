@@ -376,6 +376,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
+			"--async",
 			"--service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
@@ -424,6 +425,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
+			"--async",
 			"--service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
@@ -453,7 +455,7 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	)
 
 	// Run the gcloud run deploy command
-	err = cmdStruct.Run()
+	deployOutBytes, err := cmdStruct.Output()
 	if err != nil {
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, err.Error())
@@ -461,6 +463,9 @@ func deployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 
 		return
 	}
+
+	// Log deploy output
+	utils.Logger(fmt.Sprintf("TRACE: Triggered Deployment (Function: %s) - %s\n", deployerConfigForFunction.Handler, string(deployOutBytes)), verbose)
 
 	// Handle polling
 	if deployerConfigForFunction.IsDelete {
