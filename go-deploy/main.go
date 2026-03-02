@@ -62,7 +62,7 @@ func main() {
 	listOfFunctionsToDeploy, listOfFunctionsToDelete, listOfFoldersToDeploy := utils.ParseDiffFunctions(diffOut, cmd.Verbose)
 
 	// Get the deployer config for the repo
-	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd.Verbose)
+	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd.Verbose, cmd.PollingDelay)
 	if err != nil {
 		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error()), true)
 		panic(constants.UnableToGetDeployerConfigsForTheRepoError)

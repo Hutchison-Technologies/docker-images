@@ -11,76 +11,91 @@ import (
 	"time"
 )
 
-func HandlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
-	// Format filter
-	filter := fmt.Sprintf("createTime>=%s AND tags=service_%s", deploymentStartTime.Format(time.RFC3339), deployerConfigForFunction.DeploymentName)
-
-	// Format get build args
-	getBuildArgs := []string{
-		"builds", "list",
-		"--region", deployerConfigForFunction.Provider.Region,
-		"--project", deployerConfigForFunction.Provider.Project,
-		"--filter", filter,
-		"--sort-by", "~createTime",
-		"--limit", "1",
-		"--format=value(ID)",
-		"--verbosity", "error",
-	}
-
-	// Log CMD args
-	Logger(fmt.Sprintf("TRACE: Executing get builds list command - %s\n", strings.Join(getBuildArgs, " ")), verbose)
-
-	buildID := ""
-
-	cloudBuildPollingStartTime := time.Now().UTC()
-
-	// Manually Poll for the build ID
-	for {
-		// Return if timeout is more than 15 minutes
-		if time.Since(cloudBuildPollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
-			// Format error
-			errMessage := fmt.Sprintf("ERR: Timeout (Function: %s) (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
-			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
-
-			return
-		}
-
-		// Format the build polling command
-		buildCmdStruct := exec.Command("gcloud", getBuildArgs...)
-
-		buildCmdStruct.Env = append(os.Environ(),
-			"CLOUDSDK_CONFIG="+tempDir,
-			"GOOGLE_APPLICATION_CREDENTIALS="+deployerConfigForFunction.Provider.Credentials,
-		)
-
-		// Execute the build polling
-		buildOut, err := buildCmdStruct.Output()
-		if err != nil {
-			errMessage := fmt.Sprintf("ERR: Failed to fetch cloud build ID: %s - %s\n", string(buildOut), err)
-			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
-
-			return
-		}
-
-		// Parse build ID
-		buildID = strings.TrimSpace(string(buildOut))
-
-		if buildID != "" {
-			// Log build ID
-			Logger(fmt.Sprintf("TRACE: Initiated (buildID: %s) (Function: %s) (isDelete: %t)\n", buildID, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
-			break
-		}
-
-		Logger(fmt.Sprintf("TRACE: Waiting to get buildID (Function: %s) (isDelete: %t)...\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
-		time.Sleep(time.Duration(pollingDelay) * time.Second)
-	}
-
-	// Fomart cmd for status polling
+func HandlePollingForFolderBuild(buildID string, directoryName string, provider models.Provider, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
+	// Fomart cmd for polling
 	pollingCmd := []string{
 		"builds",
 		"describe",
 		buildID,
 		"--format=value(status)",
+		"--region", provider.Region,
+		"--project", provider.Project,
+	}
+
+	pollingStartTime := time.Now().UTC()
+
+	// Poll the build status
+	for {
+		// Return if timeout is more than 15 minutes
+		if time.Since(pollingStartTime) > time.Duration(900)*time.Second {
+			errMessage := "ERR: Polling timed out after 15 minutes\n"
+			PipeOutError(errorChannel, errMessage, "", directoryName, "")
+
+			return
+		}
+
+		// Execute the polling command
+		pollingCmdStruct := *exec.Command("gcloud", pollingCmd...)
+
+		pollingCmdStruct.Env = append(os.Environ(),
+			"CLOUDSDK_CONFIG="+tempDir,
+			"GOOGLE_APPLICATION_CREDENTIALS="+provider.Credentials,
+		)
+
+		statusBytes, err := pollingCmdStruct.CombinedOutput()
+		if err != nil {
+			errMessage := fmt.Sprintf("ERR: Unable to get build status - %s\n", err.Error())
+			PipeOutError(errorChannel, errMessage, "", directoryName, "")
+
+			return
+		}
+
+		Logger(fmt.Sprintf("TRACE: Polling Output: %s\n", string(statusBytes)), verbose)
+
+		status := strings.TrimSpace(string(statusBytes))
+
+		if strings.Contains(constants.GCLOUD_BUILD_STATUS_SUCCESS, status) {
+			Logger(fmt.Sprintf("TRACE: Build succeeded - %s\n", buildID), verbose)
+			break
+		}
+
+		if slices.Contains(constants.GCLOUD_BUILD_FAILED_STATUSES, status) {
+			// Fetch failure info
+			failureCmd := exec.Command(
+				"gcloud", "builds", "describe", buildID,
+				"--format=yaml(failureInfo,statusDetail)",
+			)
+
+			failureCmd.Env = pollingCmdStruct.Env
+
+			failureOut, err := failureCmd.CombinedOutput()
+			if err != nil {
+				errMessage := fmt.Sprintf("ERR: Unable to get failure info - %s\n", err.Error())
+				PipeOutError(errorChannel, errMessage, "", directoryName, "")
+
+				return
+			}
+
+			errMessage := fmt.Sprintf("ERR: Build failed for %s: %s", directoryName, string(failureOut))
+			PipeOutError(errorChannel, errMessage, "", directoryName, "")
+
+			return
+		}
+
+		Logger(fmt.Sprintf("TRACE: Build status - %s\n", status), verbose)
+
+		// Sleep between polling
+		time.Sleep(time.Duration(pollingDelay) * time.Second)
+	}
+}
+
+func HandlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
+	// Fomart cmd for status polling
+	pollingCmd := []string{
+		"run", "servies",
+		"describe",
+		deployerConfigForFunction.DeploymentName,
+		"--format=value(lastTransitionTime)",
 		"--region", deployerConfigForFunction.Provider.Region,
 		"--project", deployerConfigForFunction.Provider.Project,
 	}
@@ -107,33 +122,29 @@ func HandlePollingForDeployment(deployerConfigForFunction models.DeployerConfig,
 		)
 
 		// Execute the polling
-		statusBytes, err := pollingCmdStruct.Output()
+		lastTransitionBytes, err := pollingCmdStruct.Output()
 		if err != nil {
-			errMessage := fmt.Sprintf("ERR: Unable to poll cloud build (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(statusBytes), err.Error())
+			errMessage := fmt.Sprintf("ERR: Unable to poll cloud run service (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(lastTransitionBytes), err.Error())
 			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
 
 			return
 		}
 
-		status := strings.TrimSpace(string(statusBytes))
+		lastTransitionString := strings.TrimSpace(string(lastTransitionBytes))
 
-		if status == constants.GCLOUD_BUILD_STATUS_SUCCESS {
-			successMessage := fmt.Sprintf("TRACE: Status: %s (Function: %s) (isDelete: %t)\n", constants.GCLOUD_BUILD_STATUS_SUCCESS, deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
-			Logger(successMessage, verbose)
+		lastTransitionTime, err := time.Parse(time.RFC3339, lastTransitionString)
+		if err != nil {
+			fmt.Printf("ERR: Unable to parse time - %s\n", err.Error())
+			return
+		}
 
+		if lastTransitionTime.After(deploymentStartTime) {
 			break
 		}
 
-		if slices.Contains(constants.GCLOUD_BUILD_FAILED_STATUSES, status) {
-			errMessage := fmt.Sprintf("ERR: Build failed (Function: %s) (isDelete: %t) (buildID: %s): - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, buildID, status)
-			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
+		Logger(fmt.Sprintf("TRACE: (Function: %s) processing (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete), verbose)
 
-			return
-		}
-
-		Logger(fmt.Sprintf("TRACE: (Function: %s) processing (isDelete: %t) - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, status), verbose)
-
-		time.Sleep(time.Duration(pollingDelay) * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 	// Return success

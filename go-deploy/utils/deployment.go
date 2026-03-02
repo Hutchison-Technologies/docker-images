@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"hutchisont/go-deployer/models"
 	"os"
@@ -9,6 +10,74 @@ import (
 	"sync"
 	"time"
 )
+
+func PackageAndPushFolder(folder string, provider models.Provider, wg *sync.WaitGroup, verbose bool, pollingDelay int) error {
+	defer wg.Done()
+
+	// Create isolated gcloud config directory
+	tempDir, err := os.MkdirTemp("", "gcloud-*")
+	if err != nil {
+		errMessage := fmt.Sprintf("ERR: Unable to create temp gcloud dir: %s", err.Error())
+		Logger(errMessage, true)
+		return errors.New(errMessage)
+	}
+
+	defer func() {
+		Logger("TRACE: Removing temp gcloud dir...\n", verbose)
+
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			errMessage := fmt.Sprintf("ERR: Unable to remove temp gcloud dir: %s", err.Error())
+			Logger(errMessage, true)
+			return
+		}
+	}()
+
+	Logger(fmt.Sprintf("TRACE: Packaging folder %s...\n", folder), verbose)
+	// europe-west2-docker.pkg.dev/vpc-test-worker-1-107d0240/cloud-run-source-deploy/
+
+	imageTag := fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s:latest", provider.Region, provider.Project, provider.ArtifactRegistryRepo, strings.ToLower(folder))
+
+	cmdArgs := []string{
+		"builds", "submit",
+		"--pack", fmt.Sprintf("image=%s", imageTag),
+		"--project", provider.Project,
+		"--region", provider.Region,
+		folder,
+		"--async",
+		"--format=value(ID)",
+		"--verbosity", "error",
+	}
+
+	Logger(fmt.Sprintf("TRACE: Executing command for directory image - %+v\n", cmdArgs), verbose)
+
+	cmd := exec.Command("gcloud", cmdArgs...)
+	cmd.Env = append(os.Environ(),
+		"CLOUDSDK_CONFIG="+tempDir,
+		"GOOGLE_APPLICATION_CREDENTIALS="+provider.Credentials,
+	)
+
+	out, err := cmd.Output()
+	if err != nil {
+		errMessage := fmt.Sprintf("ERR: Unable to build image - %s - %s\n", string(out), err.Error())
+		Logger(errMessage, true)
+		return errors.New(errMessage)
+	}
+
+	Logger(fmt.Sprintf("TRACE: Output - %s\n", string(out)), verbose)
+
+	buildID := strings.TrimSpace(string(out))
+
+	// Log build ID
+	Logger(fmt.Sprintf("TRACE: Build ID - %s\n", buildID), verbose)
+
+	// Poll for the build ID
+	HandlePollingForFolderBuild(buildID, folder, provider, nil, tempDir, verbose, time.Now().UTC(), pollingDelay)
+
+	fmt.Printf("TRACE: Built image %s\n", imageTag)
+
+	return nil
+}
 
 func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
 	defer wg.Done()
@@ -80,15 +149,23 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
 		}
 
+		// Add function target
+		envVars = append(envVars, "FUNCTION_TARGET="+deployerConfigForFunction.Handler)
+
 		envVarsArg := strings.Join(envVars, ",")
 
 		// Format label
 		label := fmt.Sprintf("service=%s", strings.ToLower(deployerConfigForFunction.DirectoryName))
 
+		// Format image tag
+		imageTag := fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s:latest",
+			deployerConfigForFunction.Provider.Region, deployerConfigForFunction.Provider.Project,
+			deployerConfigForFunction.Provider.ArtifactRegistryRepo, strings.ToLower(deployerConfigForFunction.DirectoryName))
+
 		// Format cmd
 		cmdArgs := []string{
 			"run", "deploy", deployerConfigForFunction.DeploymentName,
-			"--source", deployerConfigForFunction.DirectoryName,
+			"--image", imageTag,
 			"--function", deployerConfigForFunction.Handler,
 			"--update-labels", label,
 			"--base-image", deployerConfigForFunction.Provider.Runtime,

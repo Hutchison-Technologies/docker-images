@@ -10,4 +10,5 @@ var (
 	UnableToSetupGcloudError                       string = "ERR: Unable to setup gcloud"
 	DeploymentFailedError                          string = "ERR: Deployment failed."
 	UnableToProcessDeploymentBatchError            string = "ERR: Unable to process deployment batch"
+	UnableToPackageAndPush                         string = "ERR: Unable to package and push"
 )

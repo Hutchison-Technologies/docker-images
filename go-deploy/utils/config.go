@@ -3,7 +3,9 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"hutchisont/go-deployer/constants"
 	"hutchisont/go-deployer/models"
 	"os"
 	"os/exec"
@@ -11,6 +13,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/go-set/v2"
 	"gopkg.in/yaml.v3"
@@ -95,7 +99,7 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 	return functionsToBeAdded.Slice(), functionsToBeDeleted.Slice(), foldersToDeploy.Slice()
 }
 
-func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider, verbose bool) (map[string]models.DeployerConfig, error) {
+func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider, verbose bool, pollingDelay int) (map[string]models.DeployerConfig, error) {
 	deployerConfigsForTheRepo := map[string]models.DeployerConfig{}
 
 	for _, dir := range listOfDirs {
@@ -178,6 +182,63 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		}
 	}
 
+	// Create an error channel for the repo
+	errorChannelForTheRepo := make(chan models.DeploymentError, len(listOfFoldersToDeploy))
+
+	wg := &sync.WaitGroup{}
+	wg.Add(len(listOfDirs))
+
+	for _, dir := range listOfDirs {
+		dirName := strings.ToLower(dir.Name())
+
+		// Ignore hidden directories
+		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") || strings.Contains(dirName, "deployer") {
+			Logger(fmt.Sprintf("TRACE: Skipping directory - %s\n", dirName), true)
+			wg.Done()
+
+			continue
+		}
+
+		// Skip directories that are not in the list of folders to deploy
+		if !slices.Contains(listOfFoldersToDeploy, dirName) {
+			Logger(fmt.Sprintf("TRACE: Skipping directory as it is not in the list of folders to deploy - %s\n", dirName), true)
+			wg.Done()
+
+			continue
+		}
+
+		time.Sleep(100 * time.Millisecond)
+
+		go func(errorChannelForTheRepo chan models.DeploymentError, wg *sync.WaitGroup) {
+			err := PackageAndPushFolder(dirName, providerConfig, wg, verbose, pollingDelay)
+			if err != nil {
+				errMessage := fmt.Sprintf("ERR: Unable to package and push folder - %s\n", err.Error())
+				PipeOutError(errorChannelForTheRepo, errMessage, "", dirName, "")
+
+				return
+			}
+		}(errorChannelForTheRepo, wg)
+	}
+
+	wg.Wait()
+
+	close(errorChannelForTheRepo)
+
+	if len(errorChannelForTheRepo) != 0 {
+		Logger(fmt.Sprintln("ERR: Package and push failed with the following errors:"), true)
+
+		// Check for errors
+		for err := range errorChannelForTheRepo {
+			Logger("---------------------------------------------------------\n", true)
+			Logger(fmt.Sprintf("%+v\n", err), true)
+			Logger("---------------------------------------------------------\n", true)
+		}
+
+		// Return the deployer configs map
+		return nil, errors.New(constants.UnableToPackageAndPush)
+	}
+
 	// Return the deployer configs map
+	Logger("TRACE: Package and push complete.\n", true)
 	return deployerConfigsForTheRepo, nil
 }
