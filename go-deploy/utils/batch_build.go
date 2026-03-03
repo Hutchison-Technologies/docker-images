@@ -30,6 +30,20 @@ func HandleBuildBatches(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string
 	buildCounter := 0
 
 	for _, dir := range listOfDirs {
+		dirName := dir.Name()
+
+		// Ignore hidden directories
+		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") || strings.Contains(dirName, "deployer") {
+			Logger(fmt.Sprintf("TRACE: Skipping directory - %s\n", dirName), true)
+			continue
+		}
+
+		// Skip directories that are not in the list of folders to deploy
+		if !slices.Contains(listOfFoldersToDeploy, dirName) {
+			Logger(fmt.Sprintf("TRACE: Skipping directory as it is not in the list of folders to deploy - %s\n", dirName), true)
+			continue
+		}
+
 		currentBatch = append(currentBatch, dir)
 		batchCounter++
 		buildCounter++
@@ -91,29 +105,11 @@ func ProcessBuildBatch(foldersBatch []os.DirEntry, listOfFoldersToDeploy []strin
 	wg.Add(len(foldersBatch))
 
 	for _, dir := range foldersBatch {
-		dirName := dir.Name()
-
-		// Ignore hidden directories
-		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") || strings.Contains(dirName, "deployer") {
-			Logger(fmt.Sprintf("TRACE: Skipping directory - %s\n", dirName), true)
-			wg.Done()
-
-			continue
-		}
-
-		// Skip directories that are not in the list of folders to deploy
-		if !slices.Contains(listOfFoldersToDeploy, dirName) {
-			Logger(fmt.Sprintf("TRACE: Skipping directory as it is not in the list of folders to deploy - %s\n", dirName), true)
-			wg.Done()
-
-			continue
-		}
-
 		go func() {
-			err := PackageAndPushFolder(dirName, providerConfig, verbose, pollingDelay)
+			err := PackageAndPushFolder(dir.Name(), providerConfig, verbose, pollingDelay)
 			if err != nil {
 				errMessage := fmt.Sprintf("ERR: Unable to package and push folder - %s\n", err.Error())
-				PipeOutError(errorChannel, errMessage, "", dirName, "")
+				PipeOutError(errorChannel, errMessage, "", dir.Name(), "")
 
 				wg.Done()
 				return
