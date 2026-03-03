@@ -201,7 +201,7 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	)
 
 	// Run the gcloud run deploy command
-	deployOutBytes, err := cmdStruct.Output()
+	deployOutBytes, err := cmdStruct.CombinedOutput()
 	if err != nil {
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(deployOutBytes), err.Error())
