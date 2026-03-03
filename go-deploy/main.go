@@ -62,7 +62,7 @@ func main() {
 	listOfFunctionsToDeploy, listOfFunctionsToDelete, listOfFoldersToDeploy := utils.ParseDiffFunctions(diffOut, cmd.Verbose)
 
 	// Get the deployer config for the repo
-	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd.Verbose, cmd.PollingDelay)
+	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd)
 	if err != nil {
 		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error()), true)
 		panic(constants.UnableToGetDeployerConfigsForTheRepoError)
@@ -79,5 +79,5 @@ func main() {
 	utils.Logger("TRACE: Initiating deployment...\n", cmd.Verbose)
 
 	// Handle the deployment in batches
-	utils.HandleDeploymentBatchs(deployerConfigsForTheRepo, cmd, deploymentStartTime, false)
+	utils.HandleDeploymentBatches(deployerConfigsForTheRepo, cmd, deploymentStartTime, false)
 }

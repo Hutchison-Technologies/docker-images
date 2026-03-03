@@ -219,6 +219,6 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	if deployerConfigForFunction.IsDelete {
 		HandlePollingForDeletion(deployerConfigForFunction, errorChannel, tempDir, verbose, pollingDelay)
 	} else {
-		HandlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime, pollingDelay)
+		HandlePollingForDeployment(deployerConfigForFunction, errorChannel, tempDir, verbose, deploymentStartTime)
 	}
 }

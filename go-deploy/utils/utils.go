@@ -73,3 +73,24 @@ func HandleErrorsFromChannel(errorChannel chan models.DeploymentError, verbose b
 
 	return selfHealingDeployerConfigs
 }
+
+func HandleBuildErrorsFromChannel(errorChannel chan models.DeploymentError, verbose bool, curateListOfFoldersForSelfHealingCycle bool) []string {
+	selfHealingFoldersToBuild := []string{}
+
+	Logger(fmt.Sprintln("ERR: Package and push failed with the following errors:"), true)
+
+	// Check for errors
+	for err := range errorChannel {
+		if curateListOfFoldersForSelfHealingCycle {
+			selfHealingFoldersToBuild = append(selfHealingFoldersToBuild, err.DirectoryName)
+		}
+
+		Logger("---------------------------------------------------------\n", true)
+		Logger(fmt.Sprintf("%+v\n", err), true)
+		Logger("---------------------------------------------------------\n", true)
+	}
+
+	Logger("TRACE: Curated list of folders for Self Healing Cycle...\n", true)
+
+	return selfHealingFoldersToBuild
+}

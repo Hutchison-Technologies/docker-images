@@ -89,7 +89,7 @@ func HandlePollingForFolderBuild(buildID string, directoryName string, provider 
 	}
 }
 
-func HandlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
+func HandlePollingForDeployment(deployerConfigForFunction models.DeployerConfig, errorChannel chan models.DeploymentError, tempDir string, verbose bool, deploymentStartTime time.Time) {
 	// Fomart cmd for status polling
 	pollingCmd := []string{
 		"run", "servies",

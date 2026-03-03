@@ -14,10 +14,12 @@ var (
 // Functions returns `cmd` arguments when complete.
 func ParseCMD() models.CMD {
 	// Define CMD flags
-	maxDeploymentsInParallel := defineInt("maxDeploymentsInParallel", 5, "Maximum number of deployments to run in parallel")
-	verbose := defineBool("verbose", false, "Verbose output")
+	maxBuildsInParallel := defineInt("maxBuildsInParallel", 5, "Maximum number of builds to run in parallel")
+	maxFunctionDeploymentsInParallel := defineInt("maxFunctionDeploymentsInParallel", 5, "Maximum number of function deployments to run in parallel")
 	pollingDelay := defineInt("pollingDelay", 15, "Delay between manual polling")
+	delayBetweenBuildsMs := defineInt("delayBetweenBuildsMs", 300, "Delay between builds in ms")
 	delayBetweenFunctionsMs := defineInt("delayBetweenFunctionsMs", 300, "Delay between functions in ms")
+	verbose := defineBool("verbose", false, "Verbose mode for logging")
 
 	// Parse CMD flags
 	flag.Parse()
@@ -25,9 +27,11 @@ func ParseCMD() models.CMD {
 	// Format CMD flags
 	return models.CMD{
 		// Props
-		MaxDeploymentsInParallel: *maxDeploymentsInParallel,
-		Verbose:                  *verbose,
-		PollingDelay:             *pollingDelay,
-		DelayBetweenFunctionsMs:  *delayBetweenFunctionsMs,
+		MaxBuildsInParallel:              *maxBuildsInParallel,
+		MaxFunctionDeploymentsInParallel: *maxFunctionDeploymentsInParallel,
+		PollingDelay:                     *pollingDelay,
+		DelayBetweenBuildsMs:             *delayBetweenBuildsMs,
+		DelayBetweenFunctionsMs:          *delayBetweenFunctionsMs,
+		Verbose:                          *verbose,
 	}
 }

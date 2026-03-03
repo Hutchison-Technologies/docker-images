@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// HandleDeploymentBatchs will handle the deployment batchs
-func HandleDeploymentBatchs(deployerConfigsForTheRepo map[string]models.DeployerConfig, cmd models.CMD, deploymentStartTime time.Time, isSelfHealingCycle bool) {
+// HandleDeploymentBatches will handle the deployment batches
+func HandleDeploymentBatches(deployerConfigsForTheRepo map[string]models.DeployerConfig, cmd models.CMD, deploymentStartTime time.Time, isSelfHealingCycle bool) {
 	errorChannel := make(chan models.DeploymentError, len(deployerConfigsForTheRepo))
 
 	loggerString := "batch"
@@ -18,9 +18,9 @@ func HandleDeploymentBatchs(deployerConfigsForTheRepo map[string]models.Deployer
 		loggerString = "self healing batch"
 	}
 
-	Logger(fmt.Sprintf("TRACE: Starting %s deployment of %d in parallel...\n", loggerString, cmd.MaxDeploymentsInParallel), true)
+	Logger(fmt.Sprintf("TRACE: Starting %s deployment of %d in parallel...\n", loggerString, cmd.MaxFunctionDeploymentsInParallel), true)
 
-	batchSize := cmd.MaxDeploymentsInParallel
+	batchSize := cmd.MaxFunctionDeploymentsInParallel
 	var currentBatch []models.DeployerConfig
 	batchCounter := 0
 	deploymentCounter := 0
@@ -64,7 +64,7 @@ func HandleDeploymentBatchs(deployerConfigsForTheRepo map[string]models.Deployer
 		Logger("TRACE: Formatted Deploy Config for Self Healing Cycle...\n", true)
 
 		// Handle self healing deployer configs
-		HandleDeploymentBatchs(selfHealingDeployerConfigs, cmd, time.Now().UTC(), true)
+		HandleDeploymentBatches(selfHealingDeployerConfigs, cmd, time.Now().UTC(), true)
 
 		return
 	}
