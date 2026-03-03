@@ -14,6 +14,16 @@ import (
 func PackageAndPushFolder(folder string, provider models.Provider, wg *sync.WaitGroup, verbose bool, pollingDelay int) error {
 	defer wg.Done()
 
+	Logger(fmt.Sprintf("TRACE: Running go build - %s\n", folder), verbose)
+	// Run go build inside the dir
+	cmdStruct := exec.Command("go", "build", ".")
+	cmdStruct.Dir = folder
+	buildOut, err := cmdStruct.CombinedOutput()
+	if err != nil {
+		Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", folder, string(buildOut)), true)
+		return err
+	}
+
 	// Create isolated gcloud config directory
 	tempDir, err := os.MkdirTemp("", "gcloud-*")
 	if err != nil {
