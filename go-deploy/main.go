@@ -59,10 +59,10 @@ func main() {
 	}
 
 	// Parse the git diff output and get a list of functions to deploy
-	listOfFunctionsToDeploy, listOfFunctionsToDelete, listOfFoldersToDeploy := utils.ParseDiffFunctions(diffOut, cmd.Verbose)
+	listOfFunctionsToDelete, listOfFoldersToDeploy := utils.ParseDiffFunctions(diffOut, cmd.Verbose)
 
 	// Get the deployer config for the repo
-	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDeploy, listOfFunctionsToDelete, providerConfig, cmd)
+	deployerConfigsForTheRepo, err := utils.GetDeployerConfigsForTheRepo(listOfDirs, listOfFoldersToDeploy, listOfFunctionsToDelete, providerConfig, cmd)
 	if err != nil {
 		utils.Logger(fmt.Sprintf("ERR: %s - %s\n", constants.UnableToGetDeployerConfigsForTheRepoError, err.Error()), true)
 		panic(constants.UnableToGetDeployerConfigsForTheRepoError)

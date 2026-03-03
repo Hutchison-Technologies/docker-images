@@ -16,7 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string) {
+func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string) {
 	functionsToBeAdded := set.From([]string{})
 	functionsToBeDeleted := set.From([]string{})
 	foldersToDeploy := set.From([]string{})
@@ -25,6 +25,7 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 
 	funcRegex := regexp.MustCompile(`\bfunc\s*(?:\([^\)]*\)\s*)?(\w+)\s*\(`)
 	currentFile := ""
+	currentDir := ""
 
 	// Loop through the diff file lines
 	for scanner.Scan() {
@@ -35,10 +36,15 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 			parts := strings.Split(line, " ")
 			if len(parts) >= 3 {
 				currentFile = strings.TrimPrefix(parts[2], "a/")
+
+				// Get the current folder
+				currentDir = filepath.Dir(currentFile)
 			}
 
 			if strings.HasSuffix(currentFile, "go.mod") || strings.HasSuffix(currentFile, "go.sum") {
 				dir := filepath.Dir(currentFile)
+
+				// Deploy the current folder
 				foldersToDeploy.Insert(dir)
 			}
 
@@ -51,6 +57,9 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 			if len(matches) > 1 && matches[1] != "" {
 				funcName := matches[1]
 				functionsToBeAdded.Insert(funcName)
+
+				// Deploy the current folder
+				foldersToDeploy.Insert(currentDir)
 			}
 		}
 
@@ -65,8 +74,10 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 
 				if len(matches) > 1 && matches[1] != "" {
 					funcName := matches[1]
-					// Add to added functions
 					functionsToBeAdded.Insert(funcName)
+
+					// Deploy the current folder
+					foldersToDeploy.Insert(currentDir)
 				}
 			}
 		}
@@ -77,6 +88,9 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 			if len(matches) > 1 && matches[1] != "" {
 				funcName := matches[1]
 				functionsToBeDeleted.Insert(funcName)
+
+				// Deploy the current folder as the file was updated
+				foldersToDeploy.Insert(currentDir)
 			}
 		}
 	}
@@ -88,14 +102,13 @@ func ParseDiffFunctions(diff []byte, verbose bool) ([]string, []string, []string
 		}
 	}
 
-	Logger(fmt.Sprintf("TRACE: Found %d function(s) updated: %+v\n", functionsToBeAdded.Size(), functionsToBeAdded), verbose)
-	Logger(fmt.Sprintf("TRACE: Found %d function(s) removed: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted), verbose)
-	Logger(fmt.Sprintf("TRACE: Folder(s) to deploy as the go.mod/go.sum files were updated: %+v\n", foldersToDeploy), verbose)
+	fmt.Printf("TRACE: Found %d function(s) to delete: %+v\n", functionsToBeDeleted.Size(), functionsToBeDeleted)
+	fmt.Printf("TRACE: Folder(s) to deploy: %+v\n", foldersToDeploy)
 
-	return functionsToBeAdded.Slice(), functionsToBeDeleted.Slice(), foldersToDeploy.Slice()
+	return functionsToBeDeleted.Slice(), foldersToDeploy.Slice()
 }
 
-func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider, cmd models.CMD) (map[string]models.DeployerConfig, error) {
+func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string, listOfFunctionsToDelete []string, providerConfig models.Provider, cmd models.CMD) (map[string]models.DeployerConfig, error) {
 	deployerConfigsForTheRepo := map[string]models.DeployerConfig{}
 
 	for _, dir := range listOfDirs {
@@ -124,6 +137,16 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 		cmdStruct = exec.Command("go", "mod", "vendor")
 		cmdStruct.Dir = dirName
 		out, err = cmdStruct.Output()
+		if err != nil {
+			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
+			return nil, err
+		}
+
+		fmt.Printf("TRACE: Running go build...\n")
+		// Run go build inside the dir
+		cmdStruct = exec.Command("go", "build", ".")
+		cmdStruct.Dir = dirName
+		out, err = cmdStruct.CombinedOutput()
 		if err != nil {
 			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
 			return nil, err
@@ -163,15 +186,12 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 
 				// Add the deployer config to the map
 				deployerConfigsForTheRepo[deployerConfigForFunction.DeploymentName] = deployerConfigForFunction
+
+				// Continue to the next function
+				continue
 			}
 
-			if slices.Contains(listOfFunctionsToDeploy, functionConfig.Handler) ||
-				(listOfFoldersToDeploy != nil && slices.Contains(listOfFoldersToDeploy, dirName)) {
-				// Skip function if it is to be deleted
-				if slices.Contains(listOfFunctionsToDelete, functionConfig.Handler) {
-					continue
-				}
-
+			if listOfFoldersToDeploy != nil && slices.Contains(listOfFoldersToDeploy, dirName) {
 				// Add the deployer config to the map
 				deployerConfigsForTheRepo[deployerConfigForFunction.DeploymentName] = deployerConfigForFunction
 			}
