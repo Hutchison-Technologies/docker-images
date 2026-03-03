@@ -91,7 +91,7 @@ func ProcessBuildBatch(foldersBatch []os.DirEntry, listOfFoldersToDeploy []strin
 	wg.Add(len(foldersBatch))
 
 	for _, dir := range foldersBatch {
-		dirName := strings.ToLower(dir.Name())
+		dirName := dir.Name()
 
 		// Ignore hidden directories
 		if dirName == "token" || strings.Contains(dirName, ".") || strings.Contains(dirName, "deploy") || strings.Contains(dirName, "Jenkinsfile") || strings.Contains(dirName, "deployer") {
