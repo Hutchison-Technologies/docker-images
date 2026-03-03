@@ -142,6 +142,17 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 			return nil, err
 		}
 
+		// Run go build inside the dir
+		cmdStruct = exec.Command("go", "build", ".")
+		cmdStruct.Dir = dirName
+		buildOut, err := cmdStruct.CombinedOutput()
+		if err != nil {
+			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(buildOut)), true)
+			return nil, err
+		}
+
+		Logger("TRACE: Built the binary successfully\n", cmd.Verbose)
+
 		// For each dir, cd into it and get the deployer config file
 		configFile, err := os.ReadFile(dirName + "/deployer_config.yml")
 		if err != nil {
