@@ -122,6 +122,12 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 
 		Logger(fmt.Sprintf("TRACE: Found directory - %s\n", dirName), cmd.Verbose)
 
+		// Skip directories that are not in the list of folders to deploy
+		if !slices.Contains(listOfFoldersToDeploy, dirName) {
+			Logger(fmt.Sprintf("TRACE: Skipping directory as it is not in the list of folders to deploy - %s\n", dirName), true)
+			continue
+		}
+
 		Logger("TRACE: Running go mod tidy...\n", cmd.Verbose)
 		// Run go mod tidy inside the dir
 		cmdStruct := exec.Command("go", "mod", "tidy")
