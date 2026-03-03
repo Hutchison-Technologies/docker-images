@@ -22,7 +22,7 @@ func HandleBuildBatches(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string
 		loggerString = "self healing batch"
 	}
 
-	Logger(fmt.Sprintf("TRACE: Starting %s builds of %d in parallel...\n", loggerString, cmd.MaxFunctionDeploymentsInParallel), true)
+	Logger(fmt.Sprintf("TRACE: Starting %s builds of %d in parallel...\n", loggerString, cmd.MaxBuildsInParallel), true)
 
 	batchSize := cmd.MaxBuildsInParallel
 	var currentBatch []os.DirEntry
@@ -110,13 +110,16 @@ func ProcessBuildBatch(foldersBatch []os.DirEntry, listOfFoldersToDeploy []strin
 		}
 
 		go func() {
-			err := PackageAndPushFolder(dirName, providerConfig, &wg, verbose, pollingDelay)
+			err := PackageAndPushFolder(dirName, providerConfig, verbose, pollingDelay)
 			if err != nil {
 				errMessage := fmt.Sprintf("ERR: Unable to package and push folder - %s\n", err.Error())
 				PipeOutError(errorChannel, errMessage, "", dirName, "")
 
+				wg.Done()
 				return
 			}
+
+			wg.Done()
 		}()
 
 		// Sleep between builds
