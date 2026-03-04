@@ -128,36 +128,40 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 			continue
 		}
 
-		Logger("TRACE: Running go mod tidy...\n", cmd.Verbose)
-		// Run go mod tidy inside the dir
-		cmdStruct := exec.Command("go", "mod", "tidy")
-		cmdStruct.Dir = dirName
-		out, err := cmdStruct.Output()
-		if err != nil {
-			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
-			return nil, err
-		}
+		// Run go build inside the dir if required
+		if cmd.RunGoBuild {
+			Logger("TRACE: Running go mod tidy...\n", cmd.Verbose)
+			// Run go mod tidy inside the dir
+			cmdStruct := exec.Command("go", "mod", "tidy")
+			cmdStruct.Dir = dirName
+			out, err := cmdStruct.Output()
+			if err != nil {
+				Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
+				return nil, err
+			}
 
-		Logger("TRACE: Running go mod vendor...\n", cmd.Verbose)
-		// Run go mod vendor inside the dir
-		cmdStruct = exec.Command("go", "mod", "vendor")
-		cmdStruct.Dir = dirName
-		out, err = cmdStruct.Output()
-		if err != nil {
-			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
-			return nil, err
-		}
+			Logger("TRACE: Running go mod vendor...\n", cmd.Verbose)
+			// Run go mod vendor inside the dir
+			cmdStruct = exec.Command("go", "mod", "vendor")
+			cmdStruct.Dir = dirName
+			out, err = cmdStruct.Output()
+			if err != nil {
+				Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(out)), true)
+				return nil, err
+			}
 
-		// Run go build inside the dir
-		cmdStruct = exec.Command("go", "build", ".")
-		cmdStruct.Dir = dirName
-		buildOut, err := cmdStruct.CombinedOutput()
-		if err != nil {
-			Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(buildOut)), true)
-			return nil, err
-		}
+			Logger("TRACE: Running go build...\n", cmd.Verbose)
+			// Run go build inside the dir
+			cmdStruct = exec.Command("go", "build", ".")
+			cmdStruct.Dir = dirName
+			buildOut, err := cmdStruct.CombinedOutput()
+			if err != nil {
+				Logger(fmt.Sprintf("ERR: Unable to process %s - %s\n", dirName, string(buildOut)), true)
+				return nil, err
+			}
 
-		Logger("TRACE: Built the binary successfully\n", cmd.Verbose)
+			Logger("TRACE: Built the binary successfully\n", cmd.Verbose)
+		}
 
 		// For each dir, cd into it and get the deployer config file
 		configFile, err := os.ReadFile(dirName + "/deployer_config.yml")

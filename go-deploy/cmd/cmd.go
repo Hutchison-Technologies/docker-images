@@ -19,6 +19,7 @@ func ParseCMD() models.CMD {
 	pollingDelay := defineInt("pollingDelay", 15, "Delay between manual polling")
 	delayBetweenBuildsMs := defineInt("delayBetweenBuildsMs", 300, "Delay between builds in ms")
 	delayBetweenFunctionsMs := defineInt("delayBetweenFunctionsMs", 300, "Delay between functions in ms")
+	runGoBuild := defineBool("runGoBuild", false, "Run go build before deployment")
 	verbose := defineBool("verbose", false, "Verbose mode for logging")
 
 	// Parse CMD flags
@@ -32,6 +33,7 @@ func ParseCMD() models.CMD {
 		PollingDelay:                     *pollingDelay,
 		DelayBetweenBuildsMs:             *delayBetweenBuildsMs,
 		DelayBetweenFunctionsMs:          *delayBetweenFunctionsMs,
+		RunGoBuild:                       *runGoBuild,
 		Verbose:                          *verbose,
 	}
 }
