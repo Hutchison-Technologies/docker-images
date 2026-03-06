@@ -1,4 +1,4 @@
-package main
+package constants
 
 var (
 	UnableToReadRepoError                          string = "ERR: Unable to read repo"
@@ -9,4 +9,6 @@ var (
 	NoCredentialsPathProvidedInProviderConfigError string = "ERR: No credentials path provided in provider config"
 	UnableToSetupGcloudError                       string = "ERR: Unable to setup gcloud"
 	DeploymentFailedError                          string = "ERR: Deployment failed."
+	UnableToProcessDeploymentBatchError            string = "ERR: Unable to process deployment batch"
+	UnableToPackageAndPush                         string = "ERR: Unable to package and push"
 )
