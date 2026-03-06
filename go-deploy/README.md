@@ -2,6 +2,8 @@
 
 This image is used to deploy public golang cloud functions to GCP.
 
+Current Prod version tag is `hutchisont/go-deploy:go125_v2.0.0`
+
 ## Build and push process (MacOS)
 
 ```bash
@@ -27,11 +29,11 @@ EG `v1.0.0`
 Commands:
 
 ```bash
-docker build -t hutchisont/go-deploy:go125_v1.0.5 .
+docker build -t hutchisont/go-deploy:go125_v2.0.0 .
 ```
 
 Once tagged, push to dockerhub via:
 
 ```bash
-docker push hutchisont/go-deploy:go125_v1.0.5
+docker push hutchisont/go-deploy:go125_v2.0.0
 ```

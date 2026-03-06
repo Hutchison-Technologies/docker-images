@@ -27,7 +27,7 @@ func HandlePollingForFolderBuild(buildID string, directoryName string, provider 
 	// Poll the build status
 	for {
 		// Return if timeout is more than 15 minutes
-		if time.Since(pollingStartTime) > time.Duration(900)*time.Second {
+		if time.Since(pollingStartTime) > time.Duration(constants.POLLING_TIMEOUT)*time.Second {
 			errMessage := "ERR: Polling timed out after 15 minutes\n"
 			PipeOutError(errorChannel, errMessage, "", directoryName, "")
 
