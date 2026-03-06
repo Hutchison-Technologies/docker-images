@@ -1,12 +1,13 @@
 package models
 
 type Provider struct {
-	Runtime             string            `yaml:"runtime"`
-	Project             string            `yaml:"project"`
-	Region              string            `yaml:"region"`
-	ServiceAccountEmail string            `yaml:"serviceAccountEmail"`
-	Credentials         string            `yaml:"credentials"`
-	Environment         map[string]string `yaml:"environment"`
+	ArtifactRegistryRepo string            `yaml:"artifactRegistryRepo"`
+	Runtime              string            `yaml:"runtime"`
+	Project              string            `yaml:"project"`
+	Region               string            `yaml:"region"`
+	ServiceAccountEmail  string            `yaml:"serviceAccountEmail"`
+	Credentials          string            `yaml:"credentials"`
+	Environment          map[string]string `yaml:"environment"`
 }
 
 type Function struct {
