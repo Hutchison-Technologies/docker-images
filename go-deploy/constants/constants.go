@@ -5,7 +5,7 @@ var (
 
 	POLLING_TIMEOUT int = 900 // 15 minutes (15 * 60 = 900 seconds)
 
-	CANNOT_FIND_SERVICE string = "Cannot find service"
+	SERVICE_COULD_NOT_BE_FOUND string = "could not be found"
 
 	// List of gcloud build statuses
 	GCLOUD_BUILD_STATUS_SUCCESS string = "SUCCESS"

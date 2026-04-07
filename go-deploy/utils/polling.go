@@ -186,15 +186,16 @@ func HandlePollingForDeletion(deployerConfigForFunction models.DeployerConfig, e
 		// Execute the polling
 		statusBytes, err := pollingCmdStruct.Output()
 		if err != nil {
-			status := strings.TrimSpace(string(statusBytes))
+			status := string(statusBytes)
 
-			if strings.Contains(status, constants.CANNOT_FIND_SERVICE) {
+			if string(statusBytes) == "" || strings.Contains(status, constants.SERVICE_COULD_NOT_BE_FOUND) {
 				successMessage := fmt.Sprintf("TRACE: Deleted (Function: %s) (isDelete: %t)\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete)
 				Logger(successMessage, verbose)
+
 				break
 			}
 
-			errMessage := fmt.Sprintf("ERR: Unable to poll cloud build (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(statusBytes), err.Error())
+			errMessage := fmt.Sprintf("ERR: Unable to poll cloud build (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, status, err.Error())
 			PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
 
 			return

@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"hutchisont/go-deployer/constants"
 	"hutchisont/go-deployer/models"
 	"os"
 	"os/exec"
@@ -115,7 +116,6 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
 			"--async",
-			"--service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 			"--impersonate-service-account", deployerConfigForFunction.Provider.ServiceAccountEmail,
 		}
 
@@ -203,6 +203,12 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 	// Run the gcloud run deploy command
 	deployOutBytes, err := cmdStruct.CombinedOutput()
 	if err != nil {
+		if deployerConfigForFunction.IsDelete && strings.Contains(string(deployOutBytes), constants.SERVICE_COULD_NOT_BE_FOUND) {
+			Logger(fmt.Sprintf("TRACE: Deployment (Function: %s) deleted successfully\n", deployerConfigForFunction.Handler), verbose)
+
+			return
+		}
+
 		// Format errMessage
 		errMessage := fmt.Sprintf("ERR: Unable to run deploy command (Function: %s) (isDelete: %t): %s - %s\n", deployerConfigForFunction.Handler, deployerConfigForFunction.IsDelete, string(deployOutBytes), err.Error())
 		PipeOutError(errorChannel, errMessage, deployerConfigForFunction.DeploymentName, deployerConfigForFunction.DirectoryName, deployerConfigForFunction.Handler)
