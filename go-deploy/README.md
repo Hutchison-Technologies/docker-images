@@ -2,22 +2,22 @@
 
 This image is used to deploy public golang cloud functions to GCP.
 
-Current Prod version tag is `hutchisont/go-deploy:go125_v2.1`
+Current Prod version tag is `hutchisont/go-deploy:go125_v2.1.1`
 
 ## Build and push process (MacOS)
 
 ```bash
-docker buildx build --platform linux/amd64 -t hutchisont/go-deploy:go125_v2.1 . --load
+docker buildx build --platform linux/amd64 -t hutchisont/go-deploy:go125_v2.1.1 . --load
 ```
 
 ```bash
-docker tag *imageID* hutchisont/go-deploy:go125_v2.1
+docker tag *imageID* hutchisont/go-deploy:go125_v2.1.1
 ```
 
 Once tagged, push to dockerhub via:
 
 ```bash
-docker push hutchisont/go-deploy:go125_v2.1
+docker push hutchisont/go-deploy:go125_v2.1.1
 ```
 
 ## Build and push (Linux)
@@ -29,11 +29,11 @@ EG `v1.0.0`
 Commands:
 
 ```bash
-docker build -t hutchisont/go-deploy:go125_v2.1 .
+docker build -t hutchisont/go-deploy:go125_v2.1.1 .
 ```
 
 Once tagged, push to dockerhub via:
 
 ```bash
-docker push hutchisont/go-deploy:go125_v2.1
+docker push hutchisont/go-deploy:go125_v2.1.1
 ```

@@ -150,6 +150,9 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		// Add function target
 		envVars = append(envVars, "FUNCTION_TARGET="+deployerConfigForFunction.Handler)
 
+		// Add region
+		envVars = append(envVars, "REGION="+deployerConfigForFunction.Provider.Region)
+
 		envVarsArg := strings.Join(envVars, ",")
 
 		// Format label
