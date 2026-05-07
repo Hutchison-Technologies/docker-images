@@ -50,7 +50,7 @@ func HandleBuildBatches(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string
 
 		if batchCounter == batchSize {
 			// Process the batch
-			ProcessBuildBatch(currentBatch, listOfFoldersToDeploy, providerConfig, errorChannel, cmd.PollingDelay, cmd.DelayBetweenBuildsMs, cmd.Verbose)
+			ProcessBuildBatch(currentBatch, listOfFoldersToDeploy, providerConfig, errorChannel, cmd.PollingDelay, cmd.DelayBetweenBuildsMs, cmd.Verbose, cmd.RunPackageAndPushToRegistry, cmd.ImageRegion)
 
 			Logger(fmt.Sprintf("TRACE: Processed %d out of %d builds...\n", buildCounter, len(listOfDirs)), true)
 
@@ -62,7 +62,7 @@ func HandleBuildBatches(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string
 
 	// Process the last batch
 	if batchCounter > 0 {
-		ProcessBuildBatch(currentBatch, listOfFoldersToDeploy, providerConfig, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose)
+		ProcessBuildBatch(currentBatch, listOfFoldersToDeploy, providerConfig, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, cmd.RunPackageAndPushToRegistry, cmd.ImageRegion)
 	}
 
 	Logger("TRACE: Closing error channel...\n", cmd.Verbose)
@@ -100,22 +100,31 @@ func HandleBuildBatches(listOfDirs []os.DirEntry, listOfFoldersToDeploy []string
 }
 
 // ProcessBuildBatch will process the deployment batch
-func ProcessBuildBatch(foldersBatch []os.DirEntry, listOfFoldersToDeploy []string, providerConfig models.Provider, errorChannel chan models.DeploymentError, pollingDelay int, delayBetweenBuildsMs int, verbose bool) {
+func ProcessBuildBatch(foldersBatch []os.DirEntry, listOfFoldersToDeploy []string, providerConfig models.Provider, errorChannel chan models.DeploymentError, pollingDelay int, delayBetweenBuildsMs int, verbose bool, runPackageAndPushToRegistry bool, regionToPushToRegistryInMultiRegionDeployments string) {
+	if !runPackageAndPushToRegistry {
+		Logger("TRACE: Skipping build and push to registry step as runPackageAndPushToRegistry flag is set to false...\n", verbose)
+
+		return
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(len(foldersBatch))
 
 	for _, dir := range foldersBatch {
 		go func() {
+			defer wg.Done()
+
+			if regionToPushToRegistryInMultiRegionDeployments != "" {
+				providerConfig.Region = regionToPushToRegistryInMultiRegionDeployments
+			}
+
 			err := PackageAndPushFolder(dir.Name(), providerConfig, verbose, pollingDelay)
 			if err != nil {
 				errMessage := fmt.Sprintf("ERR: Unable to package and push folder - %s\n", err.Error())
 				PipeOutError(errorChannel, errMessage, "", dir.Name(), "")
 
-				wg.Done()
 				return
 			}
-
-			wg.Done()
 		}()
 
 		// Sleep between builds

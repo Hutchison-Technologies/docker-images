@@ -76,6 +76,12 @@ func main() {
 		panic(constants.NoCredentialsPathProvidedInProviderConfigError)
 	}
 
+	if !cmd.RunDeployment {
+		utils.Logger("TRACE: Skipping deployment step as runDeployment flag is set to false...\n", cmd.Verbose)
+
+		return
+	}
+
 	utils.Logger("TRACE: Initiating deployment...\n", cmd.Verbose)
 
 	// Handle the deployment in batches
