@@ -32,7 +32,7 @@ func HandleDeploymentBatches(deployerConfigsForTheRepo map[string]models.Deploye
 
 		if batchCounter == batchSize {
 			// Process the batch
-			ProcessDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime)
+			ProcessDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime, cmd.ImageRegion)
 
 			Logger(fmt.Sprintf("TRACE: Processed %d out of %d functions...\n", deploymentCounter, len(deployerConfigsForTheRepo)), true)
 
@@ -44,7 +44,7 @@ func HandleDeploymentBatches(deployerConfigsForTheRepo map[string]models.Deploye
 
 	// Process the last batch
 	if batchCounter > 0 {
-		ProcessDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime)
+		ProcessDeploymentBatch(currentBatch, errorChannel, cmd.PollingDelay, cmd.DelayBetweenFunctionsMs, cmd.Verbose, deploymentStartTime, cmd.ImageRegion)
 	}
 
 	Logger("TRACE: Closing error channel...\n", cmd.Verbose)
@@ -78,12 +78,12 @@ func HandleDeploymentBatches(deployerConfigsForTheRepo map[string]models.Deploye
 }
 
 // ProcessDeploymentBatch will process the deployment batch
-func ProcessDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, pollingDelay int, delayBetweenFunctionsMs int, verbose bool, deploymentStartTime time.Time) {
+func ProcessDeploymentBatch(deploymentBatch []models.DeployerConfig, errorChannel chan models.DeploymentError, pollingDelay int, delayBetweenFunctionsMs int, verbose bool, deploymentStartTime time.Time, imageRegion string) {
 	var wg sync.WaitGroup
 	wg.Add(len(deploymentBatch))
 
 	for _, deployConfig := range deploymentBatch {
-		go DeployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime, pollingDelay)
+		go DeployFunction(deployConfig, &wg, errorChannel, verbose, deploymentStartTime, pollingDelay, imageRegion)
 
 		// Sleep between functions
 		time.Sleep(time.Duration(delayBetweenFunctionsMs) * time.Millisecond)

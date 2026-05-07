@@ -20,6 +20,9 @@ func ParseCMD() models.CMD {
 	delayBetweenBuildsMs := defineInt("delayBetweenBuildsMs", 300, "Delay between builds in ms")
 	delayBetweenFunctionsMs := defineInt("delayBetweenFunctionsMs", 300, "Delay between functions in ms")
 	runGoBuild := defineBool("runGoBuild", false, "Run go build before deployment")
+	runPackageAndPushToRegistry := defineBool("runPackageAndPushToRegistry", false, "Only run the package and push to registry step of the deployment")
+	runDeployment := defineBool("runDeployment", false, "Run the deployment step of the deployment")
+	imageRegion := flag.String("imageRegion", "", "Region to push to registry in multi region deployments, if not provided will default to provider config region")
 	verbose := defineBool("verbose", false, "Verbose mode for logging")
 
 	// Parse CMD flags
@@ -34,6 +37,9 @@ func ParseCMD() models.CMD {
 		DelayBetweenBuildsMs:             *delayBetweenBuildsMs,
 		DelayBetweenFunctionsMs:          *delayBetweenFunctionsMs,
 		RunGoBuild:                       *runGoBuild,
+		RunPackageAndPushToRegistry:      *runPackageAndPushToRegistry,
+		RunDeployment:                    *runDeployment,
+		ImageRegion:                      *imageRegion,
 		Verbose:                          *verbose,
 	}
 }

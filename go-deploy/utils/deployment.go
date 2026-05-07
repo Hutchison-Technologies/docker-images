@@ -78,7 +78,7 @@ func PackageAndPushFolder(folder string, provider models.Provider, verbose bool,
 	return nil
 }
 
-func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time, pollingDelay int) {
+func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.WaitGroup, errorChannel chan models.DeploymentError, verbose bool, deploymentStartTime time.Time, pollingDelay int, imageRegionFromCmd string) {
 	defer wg.Done()
 
 	// Create isolated gcloud config directory
@@ -155,9 +155,15 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 		// Format label
 		label := fmt.Sprintf("service=%s", strings.ToLower(deployerConfigForFunction.DirectoryName))
 
+		imageRegionToUse := deployerConfigForFunction.Provider.Region
+
+		if imageRegionFromCmd != "" {
+			imageRegionToUse = imageRegionFromCmd
+		}
+
 		// Format image tag
 		imageTag := fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s:latest",
-			deployerConfigForFunction.Provider.Region, deployerConfigForFunction.Provider.Project,
+			imageRegionToUse, deployerConfigForFunction.Provider.Project,
 			deployerConfigForFunction.Provider.ArtifactRegistryRepo, strings.ToLower(deployerConfigForFunction.DirectoryName))
 
 		// Format cmd
