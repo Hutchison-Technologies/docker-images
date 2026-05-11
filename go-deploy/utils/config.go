@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"hutchisont/go-deployer/constants"
 	"hutchisont/go-deployer/models"
 	"os"
 	"os/exec"
@@ -190,6 +191,19 @@ func GetDeployerConfigsForTheRepo(listOfDirs []os.DirEntry, listOfFoldersToDeplo
 				Timeout:                functionConfig.Timeout,
 				EnvironmentForFunction: functionConfig.EnvironmentForFunction,
 			}
+
+			concurrency := constants.MIN_CONCURRENCY_FOR_CLOUD_FUNCTION
+
+			if functionConfig.ConcurrencyForCloudFunction != nil {
+				configuredConcurrency := *functionConfig.ConcurrencyForCloudFunction
+
+				if configuredConcurrency > 0 &&
+					configuredConcurrency <= constants.MAX_CONCURRENCY_FOR_CLOUD_FUNCTION {
+					concurrency = configuredConcurrency
+				}
+			}
+
+			deployerConfigForFunction.ConcurrencyForCloudFunction = concurrency
 
 			if slices.Contains(listOfFunctionsToDelete, functionConfig.Handler) {
 				// Mark the function as to be deleted

@@ -177,6 +177,7 @@ func DeployFunction(deployerConfigForFunction models.DeployerConfig, wg *sync.Wa
 			"--update-labels", label,
 			"--base-image", deployerConfigForFunction.Provider.Runtime,
 			"--memory", deployerConfigForFunction.MemorySize + "Mi",
+			"--concurrency", fmt.Sprintf("%d", deployerConfigForFunction.ConcurrencyForCloudFunction),
 			"--region", deployerConfigForFunction.Provider.Region,
 			"--project", deployerConfigForFunction.Provider.Project,
 			"--quiet",
