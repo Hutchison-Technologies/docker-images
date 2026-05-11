@@ -3,6 +3,9 @@ package constants
 var (
 	MAX_DEPLOYMENTS_IN_PARALLEL int = 15
 
+	MAX_CONCURRENCY_FOR_CLOUD_FUNCTION int = 80
+	MIN_CONCURRENCY_FOR_CLOUD_FUNCTION int = 15
+
 	POLLING_TIMEOUT int = 900 // 15 minutes (15 * 60 = 900 seconds)
 
 	SERVICE_COULD_NOT_BE_FOUND string = "could not be found"
