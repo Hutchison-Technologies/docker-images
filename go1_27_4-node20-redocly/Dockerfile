@@ -2,7 +2,7 @@
 FROM node:20.19.4-alpine AS node
 
 # Install Go base image for build machine
-FROM golang:1.27.0-alpine3.23 AS build
+FROM golang:1.27.4-alpine3.23 AS build
 
 # Copy Node + npm from the node stage to Go image
 COPY --from=node /usr/local /usr/local

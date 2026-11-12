@@ -1,4 +1,4 @@
-# go1_27-node20-redocly
+# go1_27_4-node20-redocly
 
 This image is built with:
 
@@ -8,11 +8,11 @@ This image is built with:
 ## Build and push process
 
 ```docker
-docker build -t hutchisont/go1_27-node20-redocly .
+docker build -t hutchisont/go1_27_4-node20-redocly .
 ```
 
 Once tagged, push to dockerhub via:
 
 ```docker
-docker push hutchisont/go1_27-node20-redocly:latest
+docker push hutchisont/go1_27_4-node20-redocly:latest
 ```

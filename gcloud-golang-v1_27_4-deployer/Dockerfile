@@ -2,7 +2,7 @@ FROM google/cloud-sdk:alpine AS base
 
 RUN apk add --update ca-certificates git gcc bash libc-dev curl
 
-COPY --from=golang:1.27.0-alpine3.23 /usr/local/go/ /usr/local/go/
+COPY --from=golang:1.27.4-alpine3.23 /usr/local/go/ /usr/local/go/
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
